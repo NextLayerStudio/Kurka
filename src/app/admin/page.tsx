@@ -325,9 +325,9 @@ export default function AdminPage() {
       }
 
       // Validate other required fields
-      if (!blogForm.title || !blogForm.description || !blogForm.url) {
-        console.log('Missing required fields:', { title: blogForm.title, description: blogForm.description, url: blogForm.url });
-        setBlogError('Všetky polia sú povinné');
+      if (!blogForm.title || !blogForm.description) {
+        console.log('Missing required fields:', { title: blogForm.title, description: blogForm.description });
+        setBlogError('Nadpis a popis sú povinné');
         setBlogLoading(false);
         return;
       }
@@ -339,6 +339,7 @@ export default function AdminPage() {
         },
         body: JSON.stringify({
           ...blogForm,
+          url: blogForm.url.trim(),
           imageUrl
         }),
       });
@@ -801,6 +802,7 @@ export default function AdminPage() {
                         src={post.imageUrl}
                         alt={post.title}
                         fill
+                        unoptimized={post.imageUrl.startsWith('data:')}
                         className="object-cover"
                       />
                     </div>
@@ -809,14 +811,18 @@ export default function AdminPage() {
                       <p className="text-gray-600 text-sm mb-3 line-clamp-3">{post.description}</p>
                       <div className="flex justify-between items-center text-sm text-gray-500 mb-3">
                         <span className="text-gray-500">{formatDate(post.createdAt)}</span>
-                        <a 
-                          href={post.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                        >
-                          Otvoriť link
-                        </a>
+                        {post.url ? (
+                          <a 
+                            href={post.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                          >
+                            Otvoriť link
+                          </a>
+                        ) : (
+                          <span className="text-gray-400">Bez externého linku</span>
+                        )}
                       </div>
                       <button
                         onClick={() => deleteBlogPost(post.id)}
@@ -986,15 +992,14 @@ export default function AdminPage() {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  URL link
+                  URL link <span className="text-gray-400 font-normal">(voliteľné)</span>
                 </label>
                 <input
                   type="url"
-                  required
                   value={blogForm.url}
                   onChange={(e) => setBlogForm({ ...blogForm, url: e.target.value })}
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-500"
-                  placeholder="https://example.com/clanok"
+                  placeholder="https://example.com/clanok (voliteľné)"
                 />
               </div>
               

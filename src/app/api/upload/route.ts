@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
 import path from 'path';
 
 export async function POST(request: NextRequest) {
@@ -32,53 +31,22 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Generate unique filename
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(7);
     const extension = path.extname(file.name);
     const filename = `blog-${timestamp}-${randomString}${extension}`;
 
-    if (process.env.NODE_ENV === 'production') {
-      // For production on Vercel, convert image to base64 data URL
-      // This stores the image directly in your database without needing separate blob storage
-      const base64 = buffer.toString('base64');
-      const mimeType = file.type;
-      const dataUrl = `data:${mimeType};base64,${base64}`;
+    const base64 = buffer.toString('base64');
+    const dataUrl = `data:${file.type};base64,${base64}`;
 
-      console.log('Converted image to base64 data URL for Vercel production');
+    console.log('Stored uploaded image as base64 data URL in database');
 
-      return NextResponse.json({ 
-        success: true, 
-        imageUrl: dataUrl,
-        filename,
-        method: 'base64-dataurl'
-      });
-    } else {
-      // Use local filesystem in development
-      const uploadDir = path.join(process.cwd(), 'public', 'blog-images');
-      const filePath = path.join(uploadDir, filename);
-
-      // Create directory if it doesn't exist
-      const fs = await import('fs');
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-
-      await writeFile(filePath, buffer);
-
-      // Return the public URL
-      const imageUrl = `/blog-images/${filename}`;
-
-      console.log('Saved image to local filesystem:', imageUrl);
-
-      return NextResponse.json({ 
-        success: true, 
-        imageUrl,
-        filename,
-        method: 'local-filesystem'
-      });
-    }
-
+    return NextResponse.json({
+      success: true,
+      imageUrl: dataUrl,
+      filename,
+      method: 'base64-dataurl',
+    });
   } catch (error) {
     console.error('Error uploading file:', error);
     return NextResponse.json(

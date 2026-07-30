@@ -24,9 +24,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { title, description, url, imageUrl } = body;
 
-    if (!title || !description || !url || !imageUrl) {
+    if (!title || !description || !imageUrl) {
       return NextResponse.json(
-        { error: 'All fields are required' },
+        { error: 'Title, description, and image are required' },
         { status: 400 }
       );
     }
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       data: {
         title,
         description,
-        url,
+        url: url?.trim() || '',
         imageUrl
       }
     });

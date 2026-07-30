@@ -109,14 +109,15 @@ export default function BlogPage() {
               {blogPosts.map((post) => (
                 <div
                   key={post.id}
-                  className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden cursor-pointer group"
-                  onClick={() => window.open(post.url, '_blank')}
+                  className={`bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden group ${post.url ? 'cursor-pointer' : ''}`}
+                  onClick={() => post.url && window.open(post.url, '_blank')}
                 >
                   <div className="relative h-48 w-full">
                     <Image
                       src={post.imageUrl}
                       alt={post.title}
                       fill
+                      unoptimized={post.imageUrl.startsWith('data:')}
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>
@@ -131,9 +132,11 @@ export default function BlogPage() {
                       <span className="text-sm text-gray-500">
                         {new Date(post.createdAt).toLocaleDateString('sk-SK')}
                       </span>
-                      <span className="text-[#5ECAD5] text-sm font-medium group-hover:underline">
-                        Čítať viac →
-                      </span>
+                      {post.url && (
+                        <span className="text-[#5ECAD5] text-sm font-medium group-hover:underline">
+                          Čítať viac →
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
