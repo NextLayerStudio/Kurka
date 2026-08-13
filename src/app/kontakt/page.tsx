@@ -122,7 +122,7 @@ export default function KontaktPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-lg font-semibold text-[#202325]">+421 905 583 323</p>
+                    <p className="text-lg font-semibold text-[#202325]">+421 907 675 846</p>
                     <p className="text-sm text-gray-600">Zavolajte nám</p>
                   </div>
                 </div>

@@ -1,21 +1,47 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { inject } from "@vercel/analytics";
+import { injectSpeedInsights } from "@vercel/speed-insights";
+
+let analyticsStarted = false;
+
+function startAnalyticsIfConsented() {
+  if (analyticsStarted) return;
+
+  try {
+    const saved = localStorage.getItem("cookie-preferences");
+    if (!saved) return;
+    if (!(JSON.parse(saved) as { analytics?: boolean }).analytics) return;
+  } catch {
+    return;
+  }
+
+  analyticsStarted = true;
+  inject();
+  injectSpeedInsights();
+}
 
 export default function CookieConsent() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    startAnalyticsIfConsented();
+    window.addEventListener("cookie-consent-changed", startAnalyticsIfConsented);
+
     const cookieChoice = localStorage.getItem("cookie-preferences");
     const consentShown = localStorage.getItem("cookie-consent-shown");
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
     if (!cookieChoice && !consentShown) {
-      const timer = setTimeout(() => {
-        setIsVisible(true);
-      }, 1000);
-
-      return () => clearTimeout(timer);
+      timer = setTimeout(() => setIsVisible(true), 1000);
     }
+
+    return () => {
+      window.removeEventListener("cookie-consent-changed", startAnalyticsIfConsented);
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   const saveChoice = (analytics: boolean) => {
@@ -24,6 +50,7 @@ export default function CookieConsent() {
       JSON.stringify({ necessary: true, analytics })
     );
     localStorage.setItem("cookie-consent-shown", "true");
+    window.dispatchEvent(new CustomEvent("cookie-consent-changed"));
     setIsVisible(false);
   };
 
@@ -47,8 +74,16 @@ export default function CookieConsent() {
             Súbory cookie a ochrana súkromia
           </h3>
           <p className="mt-2 text-sm leading-7 text-gray-700">
-            Nevyhnutné cookies sú vždy aktívne. Analytické cookies (Vercel Analytics) používame len s
-            vaším súhlasom. Marketingové cookies na tejto stránke nepoužívame.
+            Ukladáme len záznam o vašom rozhodnutí, aby sme sa vás nemuseli pýtať opakovane.
+            Bezcookiové meranie návštevnosti (Vercel Analytics) spustíme len s vaším súhlasom.
+            Marketingové ani reklamné cookies na tejto stránke nepoužívame. Podrobnosti nájdete v{" "}
+            <Link
+              href="/ochrana-udajov"
+              className="text-[#5ECAD5] underline underline-offset-2 transition-colors hover:text-[#4BB8C4]"
+            >
+              zásadách ochrany osobných údajov
+            </Link>
+            .
           </p>
         </div>
 

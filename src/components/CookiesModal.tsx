@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 
 interface CookiePreferences {
   necessary: boolean;
@@ -41,6 +42,7 @@ export default function CookiesModal({
     setPreferences(next);
     localStorage.setItem("cookie-preferences", JSON.stringify(next));
     localStorage.setItem("cookie-consent-shown", "true");
+    window.dispatchEvent(new CustomEvent("cookie-consent-changed"));
     onClose();
   };
 
@@ -90,16 +92,26 @@ export default function CookiesModal({
 
         <div className="flex-1 space-y-5 overflow-y-auto px-6 py-6">
           <p className="text-sm leading-7 text-gray-700">
-            Táto webová stránka používa nevyhnutné cookies a voliteľné analytické nástroje. Marketingové
-            cookies ani reklamné trackery sa na tejto stránke nepoužívajú.
+            Táto webová stránka používa iba nevyhnutné úložisko prehliadača a voliteľné bezcookiové
+            meranie návštevnosti. Marketingové cookies ani reklamné trackery sa tu nepoužívajú. Viac
+            informácií nájdete v{" "}
+            <Link
+              href="/ochrana-udajov"
+              onClick={onClose}
+              className="text-[#5ECAD5] underline underline-offset-2 transition-colors hover:text-[#4BB8C4]"
+            >
+              zásadách ochrany osobných údajov
+            </Link>
+            .
           </p>
 
           <div className="space-y-0 divide-y divide-gray-200 border border-gray-200">
             <div className="flex items-start justify-between gap-4 p-5">
               <div>
-                <h3 className="text-sm font-semibold text-[#202325]">Nevyhnutné cookies</h3>
+                <h3 className="text-sm font-semibold text-[#202325]">Nevyhnutné</h3>
                 <p className="mt-2 text-sm leading-7 text-gray-700">
-                  Potrebné pre základné fungovanie stránky a uloženie vášho rozhodnutia o cookies.
+                  Potrebné pre základné fungovanie stránky a pre uloženie vášho rozhodnutia o
+                  cookies. Neobsahujú žiadne identifikačné údaje.
                 </p>
               </div>
               <span className="shrink-0 text-xs font-medium uppercase tracking-wide text-gray-500">
@@ -109,10 +121,11 @@ export default function CookiesModal({
 
             <div className="flex items-start justify-between gap-4 p-5">
               <div>
-                <h3 className="text-sm font-semibold text-[#202325]">Analytické cookies</h3>
+                <h3 className="text-sm font-semibold text-[#202325]">Meranie návštevnosti</h3>
                 <p className="mt-2 text-sm leading-7 text-gray-700">
-                  Slúžia na anonymizovanú štatistiku návštevnosti prostredníctvom Vercel Analytics a
-                  Speed Insights.
+                  Agregovaná štatistika návštevnosti a rýchlosti stránky prostredníctvom Vercel Web
+                  Analytics a Speed Insights. Tieto nástroje nepoužívajú cookies ani trvalé
+                  identifikátory a bez vášho súhlasu sa vôbec nespustia.
                 </p>
               </div>
               <label className="relative inline-flex shrink-0 cursor-pointer items-center">
@@ -139,19 +152,20 @@ export default function CookiesModal({
 
           {showDetails && (
             <div className="border border-gray-200 p-5 text-sm leading-7 text-gray-700">
-              <h4 className="mb-3 font-semibold text-[#202325]">Používané cookies a úložiská</h4>
+              <h4 className="mb-3 font-semibold text-[#202325]">Používané úložiská a nástroje</h4>
               <ul className="list-disc space-y-2 pl-5">
                 <li>
-                  <strong className="text-[#202325]">cookie-preferences</strong> – localStorage, ukladá
-                  vaše nastavenia cookies
+                  <strong className="text-[#202325]">cookie-preferences</strong> – lokálne úložisko
+                  prehliadača, ukladá vaše nastavenie. Platí, kým ho nevymažete v prehliadači.
                 </li>
                 <li>
-                  <strong className="text-[#202325]">cookie-consent-shown</strong> – localStorage,
-                  zaznamená zobrazenie cookie lišty
+                  <strong className="text-[#202325]">cookie-consent-shown</strong> – lokálne úložisko
+                  prehliadača, zaznamená, že vám už bola lišta zobrazená. Platí, kým ho nevymažete v
+                  prehliadači.
                 </li>
                 <li>
-                  <strong className="text-[#202325]">Vercel Analytics / Speed Insights</strong> –
-                  voliteľné analytické cookies, aktivujú sa len po súhlase
+                  <strong className="text-[#202325]">Vercel Web Analytics / Speed Insights</strong> –
+                  bezcookiové meranie návštevnosti, skript sa načíta až po udelení súhlasu.
                 </li>
               </ul>
             </div>
