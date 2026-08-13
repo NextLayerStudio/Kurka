@@ -1,225 +1,181 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 interface CookiePreferences {
   necessary: boolean;
   analytics: boolean;
-  marketing: boolean;
-  preferences: boolean;
 }
 
-export default function CookiesModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const [preferences, setPreferences] = useState<CookiePreferences>({
-    necessary: true, // Always true, can't be disabled
-    analytics: false,
-    marketing: false,
-    preferences: false,
-  });
+const defaultPreferences: CookiePreferences = {
+  necessary: true,
+  analytics: false,
+};
 
+export default function CookiesModal({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const [preferences, setPreferences] = useState<CookiePreferences>(defaultPreferences);
   const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
-    // Load saved preferences from localStorage
-    const saved = localStorage.getItem('cookie-preferences');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setPreferences(prev => ({ ...prev, ...parsed }));
-      } catch (e) {
-        console.error('Error loading cookie preferences:', e);
-      }
+    const saved = localStorage.getItem("cookie-preferences");
+    if (!saved) return;
+
+    try {
+      const parsed = JSON.parse(saved) as Partial<CookiePreferences>;
+      setPreferences({
+        necessary: true,
+        analytics: Boolean(parsed.analytics),
+      });
+    } catch (e) {
+      console.error("Error loading cookie preferences:", e);
     }
-  }, []);
+  }, [isOpen]);
+
+  const savePreferences = (next: CookiePreferences) => {
+    setPreferences(next);
+    localStorage.setItem("cookie-preferences", JSON.stringify(next));
+    localStorage.setItem("cookie-consent-shown", "true");
+    onClose();
+  };
 
   const handleAcceptAll = () => {
-    const allAccepted = {
-      necessary: true,
-      analytics: true,
-      marketing: true,
-      preferences: true,
-    };
-    setPreferences(allAccepted);
-    localStorage.setItem('cookie-preferences', JSON.stringify(allAccepted));
-    onClose();
+    savePreferences({ necessary: true, analytics: true });
   };
 
   const handleAcceptSelected = () => {
-    localStorage.setItem('cookie-preferences', JSON.stringify(preferences));
-    onClose();
+    savePreferences(preferences);
   };
 
   const handleRejectAll = () => {
-    const onlyNecessary = {
-      necessary: true,
-      analytics: false,
-      marketing: false,
-      preferences: false,
-    };
-    setPreferences(onlyNecessary);
-    localStorage.setItem('cookie-preferences', JSON.stringify(onlyNecessary));
-    onClose();
-  };
-
-  const handlePreferenceChange = (key: keyof CookiePreferences, value: boolean) => {
-    if (key === 'necessary') return; // Can't disable necessary cookies
-    setPreferences(prev => ({ ...prev, [key]: value }));
+    savePreferences({ necessary: true, analytics: false });
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-4 z-[100]">
-      {/* Backdrop with subtle blur */}
-      <div className="absolute inset-0 bg-black bg-opacity-20 backdrop-blur-sm"></div>
-      <div className="relative bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900">🍪 Nastavenia súborov cookie</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          <div className="text-gray-700">
-            <p className="mb-4">
-              Používame súbory cookie na zlepšenie vášho zážitku na našej webovej stránke. 
-              Môžete si vybrať, ktoré typy súborov cookie povolíte.
-            </p>
-            
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-gray-300 bg-white shadow-xl">
+        <div className="border-b border-gray-200 px-6 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-[#202325] md:text-xl">
+                Nastavenia súborov cookie
+              </h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Informácie o používaní cookies v súlade s GDPR.
+              </p>
+            </div>
             <button
-              onClick={() => setShowDetails(!showDetails)}
-              className="text-blue-600 hover:text-blue-800 underline text-sm"
+              onClick={onClose}
+              className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-[#202325]"
+              aria-label="Zavrieť"
             >
-              {showDetails ? 'Skryť detaily' : 'Zobraziť detaily'}
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
+        </div>
 
-          {/* Cookie Categories */}
-          <div className="space-y-4">
-            {/* Necessary Cookies */}
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-gray-900">Nevyhnutné súbory cookie</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Tieto súbory cookie sú potrebné pre základné fungovanie webovej stránky.
-                  </p>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={preferences.necessary}
-                    disabled
-                    className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-500">Vždy povolené</span>
-                </div>
+        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-6">
+          <p className="text-sm leading-7 text-gray-700">
+            Táto webová stránka používa nevyhnutné cookies a voliteľné analytické nástroje. Marketingové
+            cookies ani reklamné trackery sa na tejto stránke nepoužívajú.
+          </p>
+
+          <div className="space-y-0 divide-y divide-gray-200 border border-gray-200">
+            <div className="flex items-start justify-between gap-4 p-5">
+              <div>
+                <h3 className="text-sm font-semibold text-[#202325]">Nevyhnutné cookies</h3>
+                <p className="mt-2 text-sm leading-7 text-gray-700">
+                  Potrebné pre základné fungovanie stránky a uloženie vášho rozhodnutia o cookies.
+                </p>
               </div>
+              <span className="shrink-0 text-xs font-medium uppercase tracking-wide text-gray-500">
+                Vždy aktívne
+              </span>
             </div>
 
-            {/* Analytics Cookies */}
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-gray-900">Analytické súbory cookie</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Pomáhajú nám pochopiť, ako návštevníci používajú našu webovú stránku.
-                  </p>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={preferences.analytics}
-                    onChange={(e) => handlePreferenceChange('analytics', e.target.checked)}
-                    className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-500">Povoliť</span>
-                </div>
+            <div className="flex items-start justify-between gap-4 p-5">
+              <div>
+                <h3 className="text-sm font-semibold text-[#202325]">Analytické cookies</h3>
+                <p className="mt-2 text-sm leading-7 text-gray-700">
+                  Slúžia na anonymizovanú štatistiku návštevnosti prostredníctvom Vercel Analytics a
+                  Speed Insights.
+                </p>
               </div>
-            </div>
-
-            {/* Marketing Cookies */}
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-gray-900">Marketingové súbory cookie</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Používajú sa na zobrazovanie relevantných reklám a obsahu.
-                  </p>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={preferences.marketing}
-                    onChange={(e) => handlePreferenceChange('marketing', e.target.checked)}
-                    className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-500">Povoliť</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Preferences Cookies */}
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-gray-900">Preferenčné súbory cookie</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Ukladajú vaše nastavenia a preferencie pre lepší zážitok.
-                  </p>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={preferences.preferences}
-                    onChange={(e) => handlePreferenceChange('preferences', e.target.checked)}
-                    className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-500">Povoliť</span>
-                </div>
-              </div>
+              <label className="relative inline-flex shrink-0 cursor-pointer items-center">
+                <input
+                  type="checkbox"
+                  checked={preferences.analytics}
+                  onChange={(e) =>
+                    setPreferences((prev) => ({ ...prev, analytics: e.target.checked }))
+                  }
+                  className="peer sr-only"
+                />
+                <span className="h-6 w-11 rounded-full bg-gray-300 transition-colors peer-checked:bg-[#202325]" />
+                <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform peer-checked:translate-x-5" />
+              </label>
             </div>
           </div>
 
-          {/* Detailed Information */}
+          <button
+            onClick={() => setShowDetails(!showDetails)}
+            className="text-sm font-medium text-[#202325] underline underline-offset-2 hover:text-gray-600"
+          >
+            {showDetails ? "Skryť podrobnosti" : "Zobraziť podrobnosti"}
+          </button>
+
           {showDetails && (
-            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-              <h4 className="font-semibold text-gray-900">Podrobné informácie o súboroch cookie:</h4>
-              <div className="text-sm text-gray-700 space-y-2">
-                <p><strong>Nevyhnutné:</strong> Session ID, CSRF token, základné nastavenia</p>
-                <p><strong>Analytické:</strong> Google Analytics, návštevnosť stránok, čas strávený na stránke</p>
-                <p><strong>Marketingové:</strong> Facebook Pixel, remarketing, personalizované reklamy</p>
-                <p><strong>Preferencie:</strong> Jazyk, téma, uložené nastavenia</p>
-              </div>
+            <div className="border border-gray-200 p-5 text-sm leading-7 text-gray-700">
+              <h4 className="mb-3 font-semibold text-[#202325]">Používané cookies a úložiská</h4>
+              <ul className="list-disc space-y-2 pl-5">
+                <li>
+                  <strong className="text-[#202325]">cookie-preferences</strong> – localStorage, ukladá
+                  vaše nastavenia cookies
+                </li>
+                <li>
+                  <strong className="text-[#202325]">cookie-consent-shown</strong> – localStorage,
+                  zaznamená zobrazenie cookie lišty
+                </li>
+                <li>
+                  <strong className="text-[#202325]">Vercel Analytics / Speed Insights</strong> –
+                  voliteľné analytické cookies, aktivujú sa len po súhlase
+                </li>
+              </ul>
             </div>
           )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 p-6 border-t border-gray-200 bg-gray-50">
+        <div className="flex flex-col gap-2 border-t border-gray-200 bg-gray-50 p-6 sm:flex-row">
           <button
-            onClick={handleAcceptAll}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200"
+            onClick={handleRejectAll}
+            className="flex-1 rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-[#202325] transition-colors hover:bg-gray-100"
           >
-            Povoliť všetky
+            Len nevyhnutné
           </button>
           <button
             onClick={handleAcceptSelected}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200"
+            className="flex-1 rounded-md border border-[#202325] bg-white px-4 py-2.5 text-sm font-medium text-[#202325] transition-colors hover:bg-[#202325] hover:text-white"
           >
-            Povoliť vybrané
+            Uložiť výber
           </button>
           <button
-            onClick={handleRejectAll}
-            className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200"
+            onClick={handleAcceptAll}
+            className="flex-1 rounded-md bg-[#202325] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-black"
           >
-            Povoliť len nevyhnutné
+            Povoliť všetky
           </button>
         </div>
       </div>

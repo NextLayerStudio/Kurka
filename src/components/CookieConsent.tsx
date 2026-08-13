@@ -1,94 +1,73 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 export default function CookieConsent() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Check if user has already made a choice
-    const cookieChoice = localStorage.getItem('cookie-preferences');
-    const consentShown = localStorage.getItem('cookie-consent-shown');
-    
+    const cookieChoice = localStorage.getItem("cookie-preferences");
+    const consentShown = localStorage.getItem("cookie-consent-shown");
+
     if (!cookieChoice && !consentShown) {
-      // Show consent banner after a short delay
       const timer = setTimeout(() => {
         setIsVisible(true);
       }, 1000);
-      
+
       return () => clearTimeout(timer);
     }
   }, []);
 
-  const handleAcceptAll = () => {
-    const allAccepted = {
-      necessary: true,
-      analytics: true,
-      marketing: true,
-      preferences: true,
-    };
-    localStorage.setItem('cookie-preferences', JSON.stringify(allAccepted));
-    localStorage.setItem('cookie-consent-shown', 'true');
+  const saveChoice = (analytics: boolean) => {
+    localStorage.setItem(
+      "cookie-preferences",
+      JSON.stringify({ necessary: true, analytics })
+    );
+    localStorage.setItem("cookie-consent-shown", "true");
     setIsVisible(false);
   };
 
-  const handleAcceptNecessary = () => {
-    const onlyNecessary = {
-      necessary: true,
-      analytics: false,
-      marketing: false,
-      preferences: false,
-    };
-    localStorage.setItem('cookie-preferences', JSON.stringify(onlyNecessary));
-    localStorage.setItem('cookie-consent-shown', 'true');
-    setIsVisible(false);
-  };
+  const handleAcceptAll = () => saveChoice(true);
+
+  const handleAcceptNecessary = () => saveChoice(false);
 
   const handleCustomize = () => {
-    // This will be handled by the cookies modal
-    localStorage.setItem('cookie-consent-shown', 'true');
+    localStorage.setItem("cookie-consent-shown", "true");
     setIsVisible(false);
-    // You can trigger the cookies modal here if needed
+    window.dispatchEvent(new CustomEvent("open-cookies-modal"));
   };
 
   if (!isVisible) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-[90] p-4">
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0 mt-1">
-              <span className="text-2xl">🍪</span>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">
-                Používame súbory cookie
-              </h3>
-              <p className="text-sm text-gray-600">
-                Používame súbory cookie na zlepšenie vášho zážitku na našej webovej stránke. 
-                Kliknutím na &quot;Povoliť všetky&quot; súhlasíte s používaním všetkých typov súborov cookie.
-              </p>
-            </div>
-          </div>
+    <div className="fixed inset-x-0 bottom-0 z-[90] border-t border-gray-300 bg-white p-4 shadow-lg">
+      <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 lg:flex-row lg:items-center">
+        <div className="max-w-3xl">
+          <h3 className="text-sm font-semibold text-[#202325] md:text-base">
+            Súbory cookie a ochrana súkromia
+          </h3>
+          <p className="mt-2 text-sm leading-7 text-gray-700">
+            Nevyhnutné cookies sú vždy aktívne. Analytické cookies (Vercel Analytics) používame len s
+            vaším súhlasom. Marketingové cookies na tejto stránke nepoužívame.
+          </p>
         </div>
-        
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <button
             onClick={handleAcceptNecessary}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            className="rounded-md border border-gray-300 px-4 py-2.5 text-sm font-medium text-[#202325] transition-colors hover:bg-gray-50"
           >
             Len nevyhnutné
           </button>
           <button
             onClick={handleCustomize}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            className="rounded-md border border-[#202325] px-4 py-2.5 text-sm font-medium text-[#202325] transition-colors hover:bg-[#202325] hover:text-white"
           >
-            Prispôsobiť
+            Nastavenia
           </button>
           <button
             onClick={handleAcceptAll}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            className="rounded-md bg-[#202325] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-black"
           >
             Povoliť všetky
           </button>
