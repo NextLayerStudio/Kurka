@@ -32,7 +32,6 @@ export default function DomovPage() {
   const [selectedTestimonial, setSelectedTestimonial] = useState<Testimonial | null>(null);
 
   // Counter animation states
-  const [licenseCount, setLicenseCount] = useState(0);
   const [clientCount, setClientCount] = useState(0);
   const [moneyCount, setMoneyCount] = useState(0);
   const [mortgageCount, setMortgageCount] = useState(0);
@@ -74,7 +73,6 @@ export default function DomovPage() {
   // Start animations when component mounts
   useEffect(() => {
     // Animate each counter with different delays for staggered effect
-    animateCounter(setLicenseCount, 6, 1500, 500);
     animateCounter(setClientCount, 3000, 2000, 700);
     animateCounter(setMoneyCount, 1200000, 2500, 900);
     animateCounter(setMortgageCount, 2.5, 1800, 1100);
@@ -325,16 +323,6 @@ export default function DomovPage() {
             PRÁCA KANCELÁRIE V KOCKE
           </h2>
           <div className="flex flex-wrap justify-center items-center gap-6 sm:gap-8 md:gap-12 lg:gap-16 xl:gap-20">
-            {/* NBS Licenses */}
-            <div className="text-center flex flex-col items-center w-1/2 sm:w-auto">
-              <div className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#5ECAD5] mb-2 sm:mb-2 whitespace-nowrap">
-                {licenseCount}/6
-              </div>
-              <div className="text-sm sm:text-sm md:text-base font-semibold text-[#202325] uppercase tracking-wide">
-                NBS LICENCIÍ
-              </div>
-            </div>
-
             {/* Clients */}
             <div className="text-center flex flex-col items-center w-1/2 sm:w-auto">
               <div className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#5ECAD5] mb-2 sm:mb-2 whitespace-nowrap">

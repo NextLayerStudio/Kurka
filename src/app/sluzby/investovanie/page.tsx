@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import Head from "next/head";
 import ContactModal from "../../../components/ContactModal";
 import CalculatorCta from "@/components/CalculatorCta";
 
@@ -68,9 +67,6 @@ export default function InvestovaniePage() {
 
   return (
     <>
-      <Head>
-        <link rel="preload" href="/Investovanie.svg" as="image" type="image/svg+xml" />
-      </Head>
       <main className="min-h-screen">
         {/* Contact Modal */}
         <ContactModal isOpen={isModalOpen} onClose={closeModal} />
