@@ -48,9 +48,9 @@ export default function OMnePage() {
   // Start animations when component mounts
   useEffect(() => {
     // Animate each counter with different delays for staggered effect
-    animateCounter(setClientsCount, 50, 1500, 500);
-    animateCounter(setAumCount, 300, 2000, 700);
-    animateCounter(setMortgageCount, 2.5, 1800, 900);
+    animateCounter(setClientsCount, 100, 1500, 500);
+    animateCounter(setAumCount, 550000, 2000, 700);
+    animateCounter(setMortgageCount, 5.5, 1800, 900);
   }, []);
 
   const closeModal = () => {
@@ -192,20 +192,20 @@ export default function OMnePage() {
             MOJE VÝSLEDKY
           </h2>
           <div className="flex flex-wrap justify-center items-center gap-6 sm:gap-8 md:gap-12 lg:gap-16 xl:gap-20">
-            {/* Clients per year */}
+            {/* Clients */}
             <div className="text-center flex flex-col items-center w-1/2 sm:w-auto">
               <div className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#5ECAD5] mb-0 whitespace-nowrap">
                 {clientsCount}+
               </div>
               <div className="text-sm sm:text-sm md:text-base font-semibold text-[#202325] uppercase tracking-wide mt-6">
-                KLIENTOV ZA ROK
+                KLIENTOV, O KTORÝCH SA STARÁM
               </div>
             </div>
 
             {/* AUM */}
             <div className="text-center flex flex-col items-center w-1/2 sm:w-auto">
               <div className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#5ECAD5] mb-0 whitespace-nowrap">
-                {aumCount}k €
+                {aumCount.toLocaleString()}€+
               </div>
               <div className="text-sm sm:text-sm md:text-base font-semibold text-[#202325] uppercase tracking-wide mt-6">
                 AUM
@@ -215,7 +215,7 @@ export default function OMnePage() {
             {/* Processed mortgages */}
             <div className="text-center flex flex-col items-center w-full sm:w-auto">
               <div className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#5ECAD5] mb-0 whitespace-nowrap mt-2 sm:mt-2 md:mt-3 lg:mt-4">
-                {mortgageCount} M
+                {String(mortgageCount).replace('.', ',')} M
               </div>
               <div className="text-sm sm:text-sm md:text-base font-semibold text-[#202325] uppercase tracking-wide leading-tight mt-8">
                 SPRACOVANÝCH<br/>HYPOTÉK

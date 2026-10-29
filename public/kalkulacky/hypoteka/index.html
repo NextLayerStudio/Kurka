@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hypotekárna kalkulačka</title>
+<meta name="description" content="Hypotekárna kalkulačka – koľko vám banka požičia podľa pravidiel NBS (DTI, DSTI, stresový test, LTV). Michal Kurka, Financial Advisor.">
+<link rel="icon" type="image/png" href="icon.png">
+<link href="fonts.css" rel="stylesheet">
+<style>
+/* Spoločný vzhľad kalkulačiek michalkurka.sk – farby a písmo webu, jedna svetlá téma. */
+:root{
+  color-scheme:light;
+  --bg:#FFFFFF;
+  --soft:#F3F6F7;
+  --ink:#202325;
+  --slate:#3A4654;
+  --muted:#66707C;
+  --line:#E1E6E9;
+  --accent:#5ECAD5;
+  --accent-strong:#1F8E99;
+  --accent-soft:#E2F6F8;
+  --dark:#202325;
+  --on-dark:#CED3DA;
+  --c-p1:#3A4654;
+  --c-p2:#8FA3B5;
+  --c-gap:#E07A6A;
+  --c-income:#5ECAD5;
+  --c-target:#D4801C;
+  --radius:12px;
+  --font-d:'Monda','Arial',sans-serif;
+  --font-b:Arial,'Helvetica Neue',Helvetica,sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;}
+[hidden]{display:none!important;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-b);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;}
+h1,h2,h3{font-family:var(--font-d);margin:0;text-wrap:balance;font-weight:700;}
+.num{font-family:var(--font-d);font-variant-numeric:tabular-nums;}
+.page{max-width:1100px;margin:0 auto;padding-inline:16px;padding-block:32px 48px;display:grid;gap:22px;}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--accent-strong);outline-offset:2px;}
+
+/* ---- úvod ---- */
+.intro{display:grid;gap:10px;max-width:66ch;}
+.intro .kicker{font-family:var(--font-d);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-strong);}
+.intro h1{font-size:clamp(28px,4.4vw,42px);line-height:1.12;letter-spacing:-.01em;}
+.intro h1 em{font-style:normal;color:var(--accent-strong);}
+.intro p{margin:0;color:var(--muted);font-size:16px;}
+
+/* ---- tmavý pás ---- */
+.band{background:var(--dark);color:#fff;border-radius:18px;padding:26px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:26px;align-items:center;position:relative;overflow:hidden;}
+.band::before{content:"";position:absolute;left:-80px;bottom:-90px;width:240px;height:240px;border-radius:50%;border:30px solid var(--accent);opacity:.10;pointer-events:none;}
+@media (max-width:820px){ .band{grid-template-columns:minmax(0,1fr);padding:22px;} }
+.story{display:grid;gap:10px;min-width:0;position:relative;}
+.story .lbl{font-family:var(--font-d);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);}
+.story .big{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.story .big .v{font-size:clamp(42px,7vw,66px);line-height:1;color:#fff;}
+.story .big .u{font-family:var(--font-d);font-size:17px;color:var(--on-dark);}
+.story p{margin:0;color:var(--on-dark);font-size:15px;max-width:48ch;}
+.story p b{color:#fff;}
+.mode{display:inline-flex;background:#2A2E31;border-radius:999px;padding:3px;gap:2px;justify-self:start;}
+.mode button{border:none;background:transparent;color:var(--on-dark);font:700 12.5px var(--font-d);padding:6px 12px;border-radius:999px;cursor:pointer;}
+.mode button[aria-pressed="true"]{background:var(--accent);color:var(--dark);}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;position:relative;z-index:1;}
+.tile{background:#2A2E31;border-radius:var(--radius);padding:14px 16px;display:grid;gap:2px;min-width:0;}
+.tile .k{font-size:12.5px;color:var(--on-dark);}
+.tile .v{font-size:clamp(18px,2.4vw,22px);color:#fff;overflow-wrap:anywhere;}
+.tile .s{font-size:12px;color:var(--on-dark);}
+.tile.gap .v{color:var(--c-gap);}
+.tile.cap .v{color:var(--accent);}
+.btn-pdf{display:inline-flex;align-items:center;gap:8px;justify-self:start;background:var(--accent);color:var(--dark);border:none;border-radius:8px;padding:11px 16px;font:700 14.5px var(--font-d);cursor:pointer;margin-top:4px;}
+.btn-pdf:hover{background:#7BD7E0;}
+.btn-pdf svg{width:16px;height:16px;flex:none;}
+
+/* ---- vstupy ---- */
+.inputs{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:16px;align-items:start;}
+@media (max-width:900px){ .inputs{grid-template-columns:minmax(0,1fr);} }
+.card{border:1px solid var(--line);border-radius:var(--radius);padding:18px;display:grid;gap:16px;min-width:0;background:var(--bg);}
+.card-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;}
+.card-head h2{font-size:21px;}
+.card-head p{margin:0;color:var(--muted);font-size:13.5px;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;}
+.field{background:var(--soft);border-radius:var(--radius);padding:14px;display:grid;gap:9px;align-content:start;min-width:0;}
+.field-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.field label,.field .label{font-family:var(--font-d);font-size:15px;}
+.info{width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--muted);font:700 12px/1 var(--font-d);cursor:pointer;flex:none;}
+.info[aria-expanded="true"]{background:var(--accent);border-color:var(--accent);color:var(--dark);}
+.hint{margin:0;font-size:13px;color:var(--slate);background:var(--bg);border-left:3px solid var(--accent);border-radius:6px;padding:8px 10px;}
+.derived{margin:0;font-size:13px;color:var(--slate);}
+.derived b{font-family:var(--font-d);color:var(--ink);}
+.entry{display:flex;align-items:center;gap:8px;}
+.entry .box{flex:1;min-width:0;display:flex;align-items:baseline;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:0 12px;height:44px;}
+.entry .box:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.entry input{flex:1;min-width:0;width:0;border:none;background:transparent;font:700 19px var(--font-d);color:var(--ink);font-variant-numeric:tabular-nums;height:42px;outline:none;padding:0;}
+.entry .unit{color:var(--muted);font-size:13px;white-space:nowrap;}
+.entry button{width:44px;height:44px;flex:none;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:700 19px/1 var(--font-d);cursor:pointer;}
+.entry button:hover{border-color:var(--accent);color:var(--accent-strong);}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;background:linear-gradient(to right,var(--accent) var(--p,0%),#D9DEE2 var(--p,0%));outline:none;margin:2px 0 0;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:7px;background:var(--dark);border:3px solid var(--accent);cursor:pointer;}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:6px;background:var(--dark);border:3px solid var(--accent);cursor:pointer;}
+.ends{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;}
+
+/* segmenty a prepínače */
+.segmented{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--soft);border-radius:12px;padding:4px;gap:4px;}
+.segmented button{border:none;background:transparent;border-radius:9px;padding:10px 8px;font:700 14px var(--font-d);color:var(--slate);cursor:pointer;line-height:1.25;}
+.segmented button small{display:block;font:400 11.5px var(--font-b);color:var(--muted);}
+.segmented button[aria-pressed="true"]{background:var(--dark);color:#fff;}
+.segmented button[aria-pressed="true"] small{color:var(--on-dark);}
+.segmented.light{background:var(--bg);border:1px solid var(--line);}
+.switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--soft);border-radius:var(--radius);padding:12px 14px;}
+.switch-row .t{font-family:var(--font-d);font-size:15px;}
+.switch-row .d{display:block;font:13px var(--font-b);color:var(--muted);}
+.switch{position:relative;width:50px;height:28px;border-radius:999px;border:none;background:#C9D0D6;cursor:pointer;flex:none;transition:background .2s;}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s;}
+.switch[aria-checked="true"]{background:var(--accent-strong);}
+.switch[aria-checked="true"]::after{transform:translateX(22px);}
+.sub{display:grid;gap:12px;border-left:3px solid var(--accent);padding-left:12px;}
+.more{justify-self:start;background:none;border:1px solid var(--line);border-radius:999px;padding:8px 14px;font:700 13.5px var(--font-d);color:var(--accent-strong);cursor:pointer;}
+.more[aria-expanded="true"]{background:var(--accent-soft);border-color:var(--accent);}
+
+/* cieľ */
+.goal{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);}
+@media (max-width:900px){ .goal{position:static;} }
+.badge{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:#14636B;border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:700;justify-self:start;}
+.linkbtn{background:none;border:none;color:var(--accent-strong);font:700 13px var(--font-b);cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px;justify-self:start;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chips button{border:1px solid var(--line);background:var(--bg);color:var(--slate);border-radius:999px;padding:6px 11px;font:700 12.5px var(--font-d);cursor:pointer;}
+.chips button[aria-pressed="true"]{background:var(--dark);border-color:var(--dark);color:#fff;}
+.how{background:var(--soft);border-radius:var(--radius);padding:14px;display:grid;gap:8px;}
+.how h3{font-size:15px;}
+.how ul{margin:0;padding-left:18px;font-size:13.5px;color:var(--slate);display:grid;gap:4px;}
+
+/* graf + cena odkladania */
+.split{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start;}
+@media (max-width:900px){ .split{grid-template-columns:minmax(0,1fr);} }
+.chartbox{position:relative;height:320px;}
+@media (max-width:520px){ .chartbox{height:280px;} }
+.tablewrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums;}
+th{text-align:right;font:12px var(--font-d);color:var(--muted);padding:0 0 8px;border-bottom:1px solid var(--line);white-space:nowrap;}
+th:first-child,td:first-child{text-align:left;}
+td{text-align:right;padding:10px 0;border-bottom:1px solid var(--line);white-space:nowrap;}
+td + td,th + th{padding-left:12px;}
+tr:last-child td{border-bottom:none;}
+td.more-cost{color:var(--c-gap);font-weight:700;}
+tr.now td{font-weight:700;}
+.meter{height:6px;border-radius:6px;background:var(--line);overflow:hidden;margin-top:5px;}
+.meter i{display:block;height:100%;background:var(--accent);}
+.delay-note{margin:0;font-size:13px;color:var(--muted);}
+
+/* výzva */
+.cta{background:var(--accent);color:var(--dark);border-radius:18px;padding:22px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;}
+.cta h3{font-size:20px;}
+.cta p{margin:4px 0 0;font-size:14.5px;}
+.cta .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.cta a.primary{background:var(--dark);color:#fff;text-decoration:none;font:700 15px var(--font-d);padding:12px 20px;border-radius:8px;white-space:nowrap;}
+.cta a.primary:hover{background:#000;}
+.cta a.phone{color:var(--dark);font:700 16px var(--font-d);text-decoration:none;white-space:nowrap;padding:10px 4px;}
+.cta .btn-outline{background:transparent;border:2px solid var(--dark);color:var(--dark);border-radius:8px;padding:10px 18px;font:700 15px var(--font-d);cursor:pointer;}
+.note{margin:0;font-size:12.5px;color:var(--muted);max-width:95ch;}
+
+/* plávajúci výsledok */
+.peek{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));background:var(--dark);color:#fff;border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:10;transform:translateY(140%);transition:transform .25s ease;}
+.peek.show{transform:none;}
+.peek .k{font-size:12.5px;color:var(--on-dark);}
+.peek .v{font-size:20px;color:var(--accent);}
+@media (min-width:821px){ .peek{display:none;} }
+
+/* okná */
+.overlay{position:fixed;inset:0;background:rgba(20,24,27,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50;}
+.overlay.embedded{position:absolute;left:0;right:0;top:0;align-items:flex-start;}
+.modal{position:relative;background:var(--bg);border-radius:16px;max-width:520px;width:100%;max-height:calc(100% - 16px);overflow:auto;padding:22px;display:grid;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.modal.wide{max-width:760px;}
+.modal h2{font-size:21px;}
+.modal .lead{margin:0;color:var(--muted);font-size:14.5px;}
+.modal-x{position:absolute;right:14px;top:14px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--bg);font:700 16px/1 var(--font-d);cursor:pointer;color:var(--muted);}
+.method{display:grid;gap:14px;font-size:14px;color:var(--slate);}
+.method h3{font-size:15.5px;color:var(--ink);margin-bottom:4px;}
+.method p{margin:0;}
+.method .f{font-family:var(--font-d);background:var(--soft);border-radius:8px;padding:8px 10px;color:var(--ink);overflow-x:auto;white-space:nowrap;margin-top:6px;font-size:13.5px;}
+.advisor{display:flex;gap:12px;align-items:center;background:var(--accent-soft);border-radius:12px;padding:12px 14px;}
+.advisor b{font-family:var(--font-d);font-size:16px;display:block;}
+.advisor span{font-size:13px;color:var(--slate);}
+.mono{width:48px;height:48px;border-radius:50%;background:var(--dark);color:#fff;font:700 17px var(--font-d);display:grid;place-items:center;box-shadow:inset 0 0 0 3px var(--accent);flex:none;}
+.adv-logo{width:48px;height:48px;object-fit:contain;flex:none;}
+.form{display:grid;gap:10px;}
+.form label.f{display:grid;gap:5px;font-weight:700;font-size:13.5px;}
+.form label.f small{font-weight:400;color:var(--muted);}
+.form input[type=text],.form input[type=email],.form input[type=tel]{height:44px;border:1px solid var(--line);border-radius:10px;padding:0 12px;font:15px var(--font-b);color:var(--ink);background:var(--bg);width:100%;}
+.form input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--slate);background:var(--soft);border-radius:10px;padding:10px 12px;line-height:1.45;}
+.consent input{margin:2px 0 0;width:18px;height:18px;flex:none;accent-color:var(--accent-strong);}
+.consent a{color:var(--accent-strong);}
+.err{margin:0;color:#B5483F;font-size:13px;}
+.modal-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.btn-secondary{background:var(--soft);border:none;border-radius:10px;padding:12px 16px;font:700 14px var(--font-d);cursor:pointer;color:var(--ink);}
+.btn-main{flex:1;min-width:200px;background:var(--dark);color:#fff;border:none;border-radius:10px;padding:12px 16px;font:700 14.5px var(--font-d);cursor:pointer;}
+.btn-main.accent{background:var(--accent);color:var(--dark);}
+.skip{background:none;border:none;border-top:1px solid var(--line);color:var(--muted);text-decoration:underline;text-underline-offset:3px;font:14px var(--font-b);cursor:pointer;width:100%;padding:14px 6px 6px;}
+.spinner{width:38px;height:38px;border-radius:50%;border:4px solid var(--accent-soft);border-top-color:var(--accent-strong);animation:spin 1s linear infinite;justify-self:center;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.center{text-align:center;justify-items:center;}
+.status{font-size:13px;border-radius:10px;padding:9px 11px;margin:0;text-align:left;}
+.status.ok{background:var(--accent-soft);color:#14636B;}
+.status.warn{background:#FCEFE3;color:#8A4B12;}
+@media (prefers-reduced-motion:reduce){ .peek,.switch,.switch::after{transition:none;} .spinner{animation-duration:3s;} }
+
+/* PDF strana A4 (mimo obrazovky) */
+.rep-host{position:fixed;left:-10000px;top:0;pointer-events:none;}
+.rep{width:794px;min-height:1123px;background:#fff;color:#202325;font-family:var(--font-b);padding:26px 42px 18px;display:flex;flex-direction:column;gap:11px;}
+.rep-head{display:flex;justify-content:space-between;align-items:center;gap:20px;padding-bottom:14px;border-bottom:3px solid var(--accent);}
+.rep-brand{display:flex;gap:12px;align-items:center;}
+.rep-brand .mono{width:58px;height:58px;font-size:20px;}
+.rep-logo{height:60px;width:auto;display:block;}
+.rep-brand b{font:700 21px var(--font-d);display:block;}
+.rep-brand b .co{font:400 15px var(--font-b);color:var(--muted);}
+.rep-brand span{color:var(--muted);font-size:13px;}
+.rep-title{text-align:right;}
+.rep-title h1{font:700 23px var(--font-d);color:var(--accent-strong);}
+.rep-title p{margin:3px 0 0;font-size:12.5px;color:var(--muted);}
+.rep-title p b{color:#202325;}
+.rep-intro{background:var(--accent-soft);border-left:4px solid var(--accent);border-radius:8px;padding:9px 15px;font-size:12.5px;line-height:1.55;margin:0;}
+.rep-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:14px;}
+.rep-box{border:1px solid var(--line);border-radius:12px;padding:11px 16px;}
+.rep-box h3{font:700 11px var(--font-d);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;}
+.rep-kv{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--line);}
+.rep-kv:last-child{border-bottom:none;}
+.rep-kv b{font-family:var(--font-d);text-align:right;}
+.rep-res{background:var(--dark);color:#fff;border:none;}
+.rep-res h3{color:var(--accent);}
+.rep-res .big{font:700 40px var(--font-d);line-height:1.05;}
+.rep-res .big small{font-size:16px;color:var(--on-dark);}
+.rep-res .sub{font-size:12px;color:var(--on-dark);margin:5px 0 10px;line-height:1.45;}
+.rep-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.rep-tiles div{background:#2A2E31;border-radius:8px;padding:7px 10px;}
+.rep-tiles .k{display:block;font-size:10.5px;color:var(--on-dark);}
+.rep-tiles .v{font:700 15.5px var(--font-d);}
+.rep-two{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;}
+.rep-chart img{width:100%;height:auto;display:block;}
+.rep table{font-size:12.5px;}
+.rep td{padding:6px 0;}
+.rep-foot{margin-top:auto;background:var(--dark);color:#fff;border-radius:12px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:16px;}
+.rep-foot > div:first-child{flex:1;min-width:0;}
+.rep-foot b{font:700 15px var(--font-d);display:block;}
+.rep-foot .line{display:block;font-size:12.5px;color:var(--on-dark);}
+.rep-foot .say{font:700 14px var(--font-d);color:var(--accent);text-align:right;line-height:1.35;white-space:nowrap;}
+.rep-assume{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 16px;font-size:12px;color:var(--slate);}
+.rep-assume b{font-family:var(--font-d);color:#202325;}
+.rep-disc{font-size:9.5px;color:var(--muted);line-height:1.5;margin:0;text-align:center;}
+
+
+/* ---------- Hypotéka: tmavý pás s výsledkom vľavo a štyrmi ukazovateľmi NBS vpravo,
+   pod ním karty Žiadatelia | Nehnuteľnosť a úver, existujúce úvery, prehľad pravidiel a výzva. ---------- */
+.big.status .v{font-size:clamp(30px,5vw,46px);}
+.big.status.ok .v{color:var(--accent);}
+.big.status.bad .v{color:var(--c-gap);}
+.inds{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;position:relative;z-index:1;}
+.ind{background:#2A2E31;border-radius:var(--radius);padding:12px 14px;display:grid;gap:6px;min-width:0;border:1px solid transparent;}
+.ind.bind{border-color:var(--accent);}
+.ind .top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.ind .name{font-family:var(--font-d);font-size:14px;color:#fff;}
+.pill{font:700 11px var(--font-d);padding:2px 8px;border-radius:999px;white-space:nowrap;}
+.pill.ok{background:rgba(94,202,213,.16);color:var(--accent);}
+.pill.bad{background:rgba(224,122,106,.2);color:var(--c-gap);}
+.pill.na{background:#3A3F43;color:var(--on-dark);}
+.ind .pct{font-family:var(--font-d);font-size:22px;color:#fff;font-variant-numeric:tabular-nums;}
+.ind .bar{height:6px;background:#3A3F43;border-radius:6px;overflow:hidden;}
+.ind .bar i{display:block;height:100%;background:var(--accent);transition:width .3s ease;}
+.ind.bad .bar i{background:var(--c-gap);}
+.ind .s{font-size:12px;color:var(--on-dark);line-height:1.4;}
+.ind .s b{color:#fff;font-family:var(--font-d);font-weight:700;}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start;}
+@media (max-width:900px){ .cols{grid-template-columns:minmax(0,1fr);} }
+.who{display:grid;gap:10px;}
+.who h3{font-size:15px;color:var(--slate);}
+.note-small{margin:0;font-size:12.5px;color:var(--muted);}
+.debts{display:grid;gap:10px;}
+.debt{border:1px solid var(--line);border-radius:var(--radius);padding:12px;display:grid;gap:10px;background:var(--bg);}
+.debt-head{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+.debt-head .segmented{flex:1;max-width:420px;}
+.debt-x{width:34px;height:34px;flex:none;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--c-gap);font:700 15px/1 var(--font-d);cursor:pointer;}
+.debt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;}
+.inp{display:grid;gap:4px;font-size:12.5px;color:var(--muted);font-weight:700;}
+.inp .box{display:flex;align-items:baseline;gap:6px;border:1px solid var(--line);border-radius:10px;padding:0 10px;height:42px;background:var(--bg);}
+.inp .box:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.inp input{flex:1;min-width:0;width:0;border:none;outline:none;background:transparent;font:700 16px var(--font-d);color:var(--ink);height:40px;padding:0;font-variant-numeric:tabular-nums;}
+.inp input::placeholder{color:#9AA3AD;font-weight:400;}
+.inp .unit{font-weight:400;font-size:12.5px;white-space:nowrap;}
+.debt-sum{margin:0;font-size:12.5px;color:var(--slate);}
+.add-debt{justify-self:start;background:var(--bg);border:1px dashed var(--accent-strong);color:var(--accent-strong);border-radius:999px;padding:9px 16px;font:700 13.5px var(--font-d);cursor:pointer;}
+.add-debt:hover{background:var(--accent-soft);}
+.add-row{display:flex;gap:8px;flex-wrap:wrap;}
+.inc-label{font-family:var(--font-d);font-size:15px;}
+.inc-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;flex:1;}
+.inc-tools .segmented{flex:0 1 auto;}
+.inc-out{margin:0;font-size:13px;color:var(--slate);}
+.inc-out b{font-family:var(--font-d);color:var(--accent-strong);}
+.rules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+@media (max-width:760px){ .rules{grid-template-columns:minmax(0,1fr);} }
+.rule{background:var(--soft);border-radius:var(--radius);padding:14px;display:grid;gap:6px;align-content:start;min-width:0;}
+.rule h3{font-size:15.5px;display:flex;justify-content:space-between;gap:10px;align-items:baseline;}
+.rule h3 span{font:700 12px var(--font-d);color:var(--muted);}
+.rule p{margin:0;font-size:13.5px;color:var(--slate);}
+.rule .f{font-family:var(--font-d);font-size:13px;background:var(--bg);border-radius:8px;padding:8px 10px;color:var(--ink);overflow-wrap:anywhere;}
+.rule .f b{color:var(--accent-strong);}
+.ltv-note{margin:0;font-size:12px;color:var(--muted);}
+.am-wrap{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1fr);gap:16px;align-items:center;}
+@media (max-width:820px){ .am-wrap{grid-template-columns:minmax(0,1fr);} }
+.am-stats{display:grid;gap:10px;}
+.stat{background:var(--soft);border-radius:var(--radius);padding:12px 14px;display:grid;gap:2px;}
+.stat .k{font-size:12.5px;color:var(--muted);}
+.stat .v{font-family:var(--font-d);font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums;}
+.stat .v.int{color:#B47812;}
+.stat .s{font-size:12px;color:var(--slate);}
+.am-empty{margin:0;color:var(--muted);font-size:14px;}
+/* PDF – tabuľka ukazovateľov */
+.rep{gap:9px;}
+.rep-ind td{padding:5px 0;}
+.rep-terms td{padding:4px 0;}
+.rep-bar{display:inline-block;width:90px;height:7px;border-radius:6px;background:#E1E6E9;overflow:hidden;vertical-align:middle;margin-right:6px;}
+.rep-bar i{display:block;height:100%;background:var(--accent);}
+.rep-bar.bad i{background:var(--c-gap);}
+.rep-ok{color:#14636B;font-weight:700;}
+.rep-bad{color:#B5483F;font-weight:700;}
+.rep-rules{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:11.5px;color:var(--slate);line-height:1.45;}
+.rep-rules b{color:#202325;font-family:var(--font-d);}
+</style>
+</head>
+<body>
+<main class="page">
+  <header class="intro">
+    <span class="kicker">Hypotekárna kalkulačka</span>
+    <h1>Koľko vám banka <em>požičia</em> na bývanie</h1>
+    <p>Kalkulačka počíta podľa pravidiel Národnej banky Slovenska, ktoré musí dodržať každá banka: celková zadlženosť (DTI), výška splátok (DSTI), stresový test a pomer úveru k hodnote nehnuteľnosti (LTV).</p>
+  </header>
+
+  <section class="band" id="band" aria-live="polite" aria-labelledby="r-lbl">
+    <div class="story">
+      <div class="mode" role="group" aria-label="Čo chcem vypočítať">
+        <button type="button" data-mode="max" aria-pressed="true">Maximálny úver</button>
+        <button type="button" data-mode="check" aria-pressed="false">Konkrétny úver</button>
+      </div>
+      <span class="lbl" id="r-lbl">Maximálne vám môžu požičať</span>
+      <div class="big" id="r-big"><span class="v num" id="r-main">0 €</span><span class="u" id="r-unit"></span></div>
+      <p id="r-sentence"></p>
+      <button type="button" class="btn-pdf" data-open-pdf>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14"/></svg>
+        Stiahnuť PDF s výsledkom
+      </button>
+    </div>
+    <div class="inds" id="inds"></div>
+  </section>
+
+  <div class="cols">
+    <section class="card" aria-labelledby="app-h">
+      <div class="card-head"><h2 id="app-h">Žiadatelia</h2><p>Čistý mesačný príjem</p></div>
+      <div class="who"><h3>Hlavný žiadateľ</h3><div class="grid2" id="f-app1"></div></div>
+      <div class="switch-row"><span><span class="t" id="lbl-partner">Žiadame spolu s partnerom</span><span class="d">Manžel, manželka alebo partner ako spoludlžník</span></span>
+        <button type="button" class="switch" role="switch" aria-checked="false" aria-labelledby="lbl-partner" id="sw-partner"></button></div>
+      <div class="sub" id="app2-box" hidden><div class="who"><h3>Partner</h3><div class="grid2" id="f-app2"></div>
+        <p class="note-small">Aj keď partner nemá príjem, od príjmu domácnosti sa odpočíta jeho životné minimum.</p></div></div>
+      <div class="switch-row"><span><span class="t" id="lbl-kids">Vyživujem deti</span><span class="d">Za každé dieťa sa od príjmu odpočíta životné minimum</span></span>
+        <button type="button" class="switch" role="switch" aria-checked="false" aria-labelledby="lbl-kids" id="sw-kids"></button></div>
+      <div class="sub" id="kids-box" hidden><div class="grid2" id="f-kids"></div></div>
+    </section>
+
+    <section class="card" aria-labelledby="loan-h">
+      <div class="card-head"><h2 id="loan-h">Nehnuteľnosť a úver</h2></div>
+      <div class="grid2" id="f-loan"></div>
+      <div class="field"><span class="label" id="lbl-ltv">Typ úveru</span>
+        <div class="segmented light" role="group" aria-labelledby="lbl-ltv" id="ltv-seg"></div>
+        <p class="ltv-note" id="ltv-note"></p></div>
+      <div class="grid2" id="f-terms"></div>
+      <div class="field"><span class="label" id="lbl-fix">Fixácia úrokovej sadzby</span>
+        <div class="segmented light" role="group" aria-labelledby="lbl-fix">
+          <button type="button" data-fix="short" aria-pressed="true">do 10 rokov<small>stres +2 p. b.</small></button>
+          <button type="button" data-fix="long" aria-pressed="false">nad 10 rokov<small>stres +1 p. b.</small></button>
+          <button type="button" data-fix="full" aria-pressed="false">celá doba<small>bez stresu</small></button>
+        </div></div>
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="inc-h">
+    <div class="card-head"><h2 id="inc-h">Ďalšie príjmy</h2><p>Prenájom nehnuteľnosti a príjem z podnikania</p></div>
+    <div class="debts" id="incomes"></div>
+    <p class="debt-sum" id="inc-sum" hidden></p>
+    <div class="add-row">
+      <button type="button" class="add-debt" data-add-inc="rental">+ Prenájom</button>
+      <button type="button" class="add-debt" data-add-inc="szco">+ SZČO</button>
+      <button type="button" class="add-debt" data-add-inc="sro">+ s.r.o.</button>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="debt-h">
+    <div class="card-head"><h2 id="debt-h">Existujúce úvery a karty</h2><p>Úvery, ktoré budú splácať aj po získaní hypotéky</p></div>
+    <div class="debts" id="debts"></div>
+    <p class="debt-sum" id="debt-sum"></p>
+    <button type="button" class="add-debt" id="add-debt">+ Pridať existujúci úver alebo kartu</button>
+  </section>
+
+  <section class="card" aria-labelledby="am-h">
+    <div class="card-head"><h2 id="am-h">Ako bude úver klesať</h2><p id="am-sub"></p></div>
+    <div class="am-wrap" id="am-wrap">
+      <div class="chartbox"><canvas id="am-chart" aria-label="Graf zostatku úveru a zaplatených úrokov v čase"></canvas></div>
+      <div class="am-stats" id="am-stats"></div>
+    </div>
+    <p class="am-empty" id="am-empty" hidden>Graf sa zobrazí, keď bude výška úveru väčšia ako 0 €.</p>
+  </section>
+
+  <section class="card" aria-labelledby="rules-h">
+    <div class="card-head"><h2 id="rules-h">Čo kontroluje banka</h2><p id="rules-sub">s vašimi číslami</p></div>
+    <div class="rules" id="rules"></div>
+    <p class="note-small">Banky môžu malú časť úverov poskytnúť aj nad tieto limity (napr. DSTI do 70 %, mladým do 35 rokov DTI do 9-násobku). Ide o ich vlastné kvóty, kalkulačka s nimi nepočíta. Banka si navyše môže stanoviť prísnejšie podmienky.</p>
+  </section>
+
+  <aside class="cta">
+    <div>
+      <h3>Chcem hypotéku prebrať osobne</h3>
+      <p>Porovnám ponuky bánk a pomôžem vám vybrať najvýhodnejšiu hypotéku.</p>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn-outline" data-open-pdf>Stiahnuť PDF</button>
+      <a class="phone" id="cta-phone" href="tel:+421907675846">+421 907 675 846</a>
+      <a class="primary" id="cta-link" href="https://www.michalkurka.sk/kontakt" target="_blank" rel="noopener">Kontaktujte ma</a>
+    </div>
+  </aside>
+
+  <p class="note" id="disclaimer"></p>
+</main>
+
+<div class="peek" id="peek" aria-hidden="true"><span class="k" id="pk-k">Maximálny úver</span><span class="v num" id="pk-v">0 €</span></div>
+
+<div class="overlay" id="pdf-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pdf-h">
+    <h2 id="pdf-h">Stiahnuť PDF s prepočtom</h2>
+    <p class="lead">Zanechajte mi kontakt a ozvem sa vám s bezplatnou konzultáciou k hypotéke. Kontakt nie je povinný, PDF si môžete stiahnuť aj bez neho.</p>
+    <div class="advisor"><span class="mono" data-adv="initials">MK</span><div><b data-adv="name">Michal Kurka</b><span data-adv="role" style="display:block;font-size:12.5px;color:var(--muted);"></span><span>Porovnám ponuky bánk a navrhnem najvýhodnejšie riešenie.</span></div></div>
+    <form class="form" id="pdf-form" novalidate>
+      <label class="f" for="c-name">Meno a priezvisko <small>(voliteľné, zobrazí sa v PDF)</small><input type="text" id="c-name" autocomplete="name" placeholder="Ján Novák"></label>
+      <label class="f" for="c-email">E-mail<input type="email" id="c-email" autocomplete="email" placeholder="jan.novak@email.sk"></label>
+      <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;"><label>Web <input type="text" id="c-website" tabindex="-1" autocomplete="off"></label></div>
+      <label class="f" for="c-phone">Telefón <small>(voliteľné)</small><input type="tel" id="c-phone" autocomplete="tel" placeholder="+421"></label>
+      <label class="consent" for="c-consent"><input type="checkbox" id="c-consent"><span>Súhlasím so spracovaním osobných údajov na účel kontaktovania a bezplatnej konzultácie. <a id="c-privacy" href="https://www.michalkurka.sk/ochrana-udajov" target="_blank" rel="noopener">Ochrana osobných údajov</a></span></label>
+      <p class="err" id="c-err" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" data-close>Zrušiť</button>
+        <button type="submit" class="btn-main">Odoslať kontakt a vytvoriť PDF</button>
+      </div>
+      <button type="button" class="skip" id="c-skip">alebo vytvoriť PDF bez kontaktu</button>
+    </form>
+  </div>
+</div>
+
+<div class="overlay" id="ready-modal" hidden>
+  <div class="modal center" role="dialog" aria-modal="true" aria-labelledby="ready-h" aria-live="polite">
+    <div class="spinner" id="r-spin"></div>
+    <h2 id="ready-h">Pripravujem PDF…</h2>
+    <p class="lead" id="ready-lead">Chvíľku strpenia, skladám váš prepočet.</p>
+    <p class="status" id="ready-status" hidden></p>
+    <button type="button" class="btn-main accent" id="r-download" hidden style="width:100%;">Stiahnuť PDF</button>
+    <button type="button" class="btn-secondary" data-close>Zavrieť</button>
+  </div>
+</div>
+
+<div class="rep-host" aria-hidden="true"><div class="rep" id="rep"></div></div>
+
+<script src="vendor/chart.umd.min.js"></script>
+<script src="vendor/html2canvas.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="hypo-config.js"></script>
+<script src="hypo-calc.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* Logo – čierny monogram MK (PNG, priehľadné pozadie), vložený priamo do súboru. */
+var LOGO_MK = 'data:image/png;base64,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';
+
+/* =================== NASTAVENIA (upraví web firma) =================== */
+var CONFIG = {
+  advisor: {
+    initials: 'MK',
+    name: 'Michal Kurka',
+    company: 'LiNa Capital s.r.o.',
+    title: 'Financial Advisor',
+    phone: '+421 907 675 846',
+    email: 'michal.kurka@simplea.sk',
+    web: 'www.michalkurka.sk',
+    contactUrl: 'https://www.michalkurka.sk/kontakt',
+    logo: LOGO_MK
+  },
+  // Adresa, na ktorú sa pošle kontakt z formulára (POST, JSON). Prázdne = kontakt sa nikam neodošle.
+  contactEndpoint: '/api/kalkulacka-kontakt',
+  privacyUrl: '/ochrana-udajov'
+};
+/* ===================================================================== */
+
+var CFG = window.HYPO_CONFIG, CALC = window.HypoCalc;
+var S = {
+  mode: 'max', partner: false, inc1: 1800, age1: 32, inc2: 1400, age2: 30, hasKids: false, kids: 1,
+  loan: 150000, property: 200000, ltvCategory: 'standard',
+  term: CFG.defaults.termYears, rate: CFG.defaults.rate * 100, fixation: CFG.defaults.fixation,
+  existing: [], extra: []
+};
+var R = null, nextDebtId = 1, nextIncId = 1, renderedPartner = null;
+
+var eurF = new Intl.NumberFormat('sk-SK', {maximumFractionDigits: 0});
+var eur2F = new Intl.NumberFormat('sk-SK', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+function eur(n){ return isFinite(n) ? eurF.format(Math.round(n)) + ' €' : '–'; }
+function eur2(n){ return isFinite(n) ? eur2F.format(n) + ' €' : '–'; }
+function dec(n, d){ return (Math.round(n * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d).replace('.', ','); }
+function pct(n, d){ return isFinite(n) ? dec(n, d == null ? 1 : d) + ' %' : '–'; }
+function yw(n){ return n === 1 ? 'rok' : (n >= 2 && n <= 4 ? 'roky' : 'rokov'); }
+function esc(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+function parseNum(s){ var v = parseFloat(String(s).replace(/\s/g, '').replace(',', '.')); return isNaN(v) ? null : v; }
+function times(x){ return isFinite(x) ? dec(x, 2).replace(/,?0+$/, '').replace(/,$/, '') + '×' : '–'; }
+
+/* ---------------- číselné polia ---------------- */
+var FIELDS = [
+  {key:'inc1', box:'f-app1', label:'Čistý mesačný príjem', unit:'€', min:0, max:8000, hardMax:100000, step:50, dec:0, hint:'Príjem na účet po odvodoch a dani. Pri podnikateľoch banka vychádza z daňového priznania.'},
+  {key:'age1', box:'f-app1', label:'Vek', unit:'rokov', min:18, max:70, step:1, dec:0, plain:true, hint:'Od 41 rokov sa limit DTI znižuje, ak úver splatíte až po 65. roku veku.'},
+  {key:'inc2', box:'f-app2', label:'Čistý mesačný príjem', unit:'€', min:0, max:8000, hardMax:100000, step:50, dec:0, hint:'Ak partner nemá príjem, zadajte 0.'},
+  {key:'age2', box:'f-app2', label:'Vek', unit:'rokov', min:18, max:70, step:1, dec:0, plain:true, hint:'Limit DTI sa počíta pre každého žiadateľa zvlášť podľa jeho veku.'},
+  {key:'kids', box:'f-kids', label:'Počet detí', unit:'', min:1, max:8, step:1, dec:0, plain:true, hint:'Nezaopatrené deti, ktoré vyživujete. Za každé sa odpočíta ' + dec(CFG.subsistence.child, 2) + ' €.'},
+  {key:'loan', box:'f-loan', label:'Výška úveru', unit:'€', min:5000, max:800000, hardMax:5000000, step:5000, dec:0, hint:'Koľko si chcete požičať. Kalkulačka overí, či úver spĺňa pravidlá NBS.', show:function(){ return S.mode === 'check'; }},
+  {key:'property', box:'f-loan', label:'Hodnota nehnuteľnosti', unit:'€', min:0, max:1000000, hardMax:10000000, step:5000, dec:0, hint:'Hodnota podľa znaleckého posudku nehnuteľnosti, ktorou úver zabezpečíte. Ak ju ešte nepoznáte, zadajte 0.'},
+  {key:'term', box:'f-terms', label:'Splatnosť', unit:'rokov', min:5, max:CFG.maxTermYears, step:1, dec:0, plain:true, hint:'Najviac ' + CFG.maxTermYears + ' rokov. Dlhšia splatnosť znamená nižšiu splátku.'},
+  {key:'rate', box:'f-terms', label:'Úroková sadzba', unit:'% p. a.', min:0.5, max:8, hardMax:20, step:0.05, dec:2, hint:'Sadzba, ktorú vám ponúka banka. Pri stresovom teste sa zvýši o 2 percentuálne body, najviac na 6 %.'}
+];
+function fmtField(f, v){ return f.plain ? String(Math.round(v)) : (f.dec ? dec(v, f.dec) : eurF.format(Math.round(v))); }
+function buildField(f){
+  var el = document.createElement('div');
+  el.className = 'field';
+  el.innerHTML =
+    '<div class="field-top"><label for="in-' + f.key + '">' + f.label + '</label>' +
+    '<button type="button" class="info" aria-expanded="false" aria-controls="h-' + f.key + '" aria-label="Vysvetlenie: ' + f.label + '">i</button></div>' +
+    '<p class="hint" id="h-' + f.key + '" hidden>' + f.hint + '</p>' +
+    '<div class="entry"><button type="button" data-dir="-1" aria-label="Menej">−</button>' +
+      '<div class="box"><input id="in-' + f.key + '" inputmode="decimal" autocomplete="off"><span class="unit">' + f.unit + '</span></div>' +
+      '<button type="button" data-dir="1" aria-label="Viac">+</button></div>' +
+    '<input type="range" id="sl-' + f.key + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '" aria-label="' + f.label + '">';
+  document.getElementById(f.box).appendChild(el);
+  var input = el.querySelector('input:not([type=range])'), slider = el.querySelector('input[type=range]'), info = el.querySelector('.info'), hint = el.querySelector('.hint');
+  info.addEventListener('click', function(){ var o = info.getAttribute('aria-expanded') !== 'true'; info.setAttribute('aria-expanded', String(o)); hint.hidden = !o; });
+  slider.addEventListener('input', function(){ setVal(f, parseFloat(slider.value), 'slider'); });
+  input.addEventListener('input', function(){ var v = parseNum(input.value); if(v != null) setVal(f, v, 'input'); });
+  input.addEventListener('blur', function(){ syncField(f); });
+  input.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowUp' || e.key === 'ArrowDown'){ e.preventDefault(); setVal(f, S[f.key] + (e.key === 'ArrowUp' ? 1 : -1) * f.step); }
+  });
+  el.querySelectorAll('[data-dir]').forEach(function(b){ b.addEventListener('click', function(){ setVal(f, S[f.key] + Number(b.dataset.dir) * f.step); }); });
+  f.el = el; f.input = input; f.slider = slider;
+}
+function clamp(f, v){
+  var hi = f.hardMax != null ? f.hardMax : f.max;
+  v = Math.min(hi, Math.max(f.min, v));
+  return f.dec ? Math.round(v * 100) / 100 : Math.round(v);
+}
+function setVal(f, v, source){ S[f.key] = clamp(f, v); syncField(f, source); update(); }
+function syncField(f, source){
+  var v = S[f.key];
+  if(source !== 'input') f.input.value = fmtField(f, v);
+  if(source !== 'slider') f.slider.value = Math.min(f.max, v);
+  f.slider.style.setProperty('--p', ((Math.min(f.max, v) - f.min) / (f.max - f.min) * 100) + '%');
+}
+
+/* ---------------- prepínače ---------------- */
+document.querySelectorAll('[data-mode]').forEach(function(b){ b.addEventListener('click', function(){ S.mode = b.dataset.mode; update(); }); });
+document.querySelectorAll('[data-fix]').forEach(function(b){ b.addEventListener('click', function(){ S.fixation = b.dataset.fix; update(); }); });
+var ltvSeg = document.getElementById('ltv-seg');
+Object.keys(CFG.ltv.categories).forEach(function(k){
+  var c = CFG.ltv.categories[k], b = document.createElement('button');
+  b.type = 'button'; b.dataset.ltv = k;
+  b.innerHTML = c.label + '<small>LTV najviac ' + Math.round(c.limit * 100) + ' %</small>';
+  b.addEventListener('click', function(){ S.ltvCategory = k; update(); });
+  ltvSeg.appendChild(b);
+});
+function bindSwitch(id, key){ document.getElementById(id).addEventListener('click', function(){ S[key] = !S[key]; update(); }); }
+bindSwitch('sw-partner', 'partner'); bindSwitch('sw-kids', 'hasKids');
+
+/* ---------------- existujúce úvery ---------------- */
+function addDebt(kind){
+  S.existing.push({id: nextDebtId++, kind: kind || 'loan', balance: null, years: null, rate: null, payment: null, limit: null, drawn: null});
+  renderDebts(); update();
+}
+document.getElementById('add-debt').addEventListener('click', function(){ addDebt('loan'); var last = document.querySelector('.debt:last-child input'); if(last) last.focus(); });
+function debtInput(d, key, label, unit, placeholder){
+  return '<label class="inp">' + label + '<span class="box"><input data-debt="' + d.id + '" data-key="' + key + '" inputmode="decimal" autocomplete="off" value="' + (d[key] != null ? String(d[key]).replace('.', ',') : '') + '" placeholder="' + (placeholder || '') + '"><span class="unit">' + unit + '</span></span></label>';
+}
+function renderDebts(){
+  var box = document.getElementById('debts');
+  box.innerHTML = S.existing.map(function(d, i){
+    var head = '<div class="debt-head"><div class="segmented light" role="group" aria-label="Typ záväzku ' + (i + 1) + '">' +
+      '<button type="button" data-debt-kind="loan" data-id="' + d.id + '" aria-pressed="' + (d.kind === 'loan') + '">Úver</button>' +
+      '<button type="button" data-debt-kind="card" data-id="' + d.id + '" aria-pressed="' + (d.kind === 'card') + '">Kreditná karta / kontokorent</button></div>' +
+      '<button type="button" class="debt-x" data-debt-del="' + d.id + '" aria-label="Odstrániť záväzok ' + (i + 1) + '">✕</button></div>';
+    var grid = d.kind === 'card'
+      ? debtInput(d, 'limit', 'Limit', '€') + debtInput(d, 'drawn', 'Z toho čerpané', '€', '0')
+      : debtInput(d, 'balance', 'Zostatok úveru', '€') + debtInput(d, 'years', 'Zostávajúca doba', 'rokov') +
+        debtInput(d, 'rate', 'Úroková sadzba', '%', 'nepovinné') + debtInput(d, 'payment', 'Mesačná splátka', '€', 'vypočíta sa');
+    return '<div class="debt" data-debt-box="' + d.id + '">' + head + '<div class="debt-grid">' + grid + '</div></div>';
+  }).join('');
+  box.querySelectorAll('[data-debt-kind]').forEach(function(b){
+    b.addEventListener('click', function(){ var d = findDebt(b.dataset.id); d.kind = b.dataset.debtKind; renderDebts(); update(); });
+  });
+  box.querySelectorAll('[data-debt-del]').forEach(function(b){
+    b.addEventListener('click', function(){ S.existing = S.existing.filter(function(x){ return String(x.id) !== b.dataset.debtDel; }); renderDebts(); update(); });
+  });
+  box.querySelectorAll('input[data-debt]').forEach(function(inp){
+    inp.addEventListener('input', function(){ var d = findDebt(inp.dataset.debt); d[inp.dataset.key] = parseNum(inp.value); update(); });
+  });
+}
+/* ---------------- ďalšie príjmy (prenájom, SZČO, s.r.o.) ---------------- */
+var INC_LABEL = {rental: 'Prenájom nehnuteľnosti', szco: 'Podnikanie – SZČO', sro: 'Podnikanie – s.r.o.'};
+function pctOf(v){ return Math.round(v * 100); }
+function defaultIncShare(kind, method){
+  var e = CFG.extraIncome;
+  return pctOf(kind === 'rental' ? e.rentalDefaultShare : (method === 'turnover' ? e.turnoverDefaultShare : e.netDefaultShare));
+}
+function findInc(id){ return S.extra.filter(function(x){ return String(x.id) === String(id); })[0]; }
+document.querySelectorAll('[data-add-inc]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var kind = btn.dataset.addInc, method = kind === 'rental' ? 'amount' : 'turnover';
+    S.extra.push({id: nextIncId++, kind: kind, method: method, amount: null, turnover: null, share: defaultIncShare(kind, method), ownership: 100, owner: 0});
+    renderIncomes(); update();
+    var last = document.querySelector('#incomes .debt:last-child input'); if(last) last.focus();
+  });
+});
+function incInput(x, key, label, unit, placeholder){
+  return '<label class="inp">' + label + '<span class="box"><input data-inc="' + x.id + '" data-key="' + key + '" inputmode="decimal" autocomplete="off" value="' +
+    (x[key] != null ? String(x[key]).replace('.', ',') : '') + '" placeholder="' + (placeholder || '') + '"><span class="unit">' + unit + '</span></span></label>';
+}
+function renderIncomes(){
+  renderedPartner = S.partner;
+  var box = document.getElementById('incomes');
+  box.innerHTML = S.extra.map(function(x, i){
+    var tools = '<span class="inc-label">' + INC_LABEL[x.kind] + '</span>';
+    if(x.kind !== 'rental') tools += '<div class="segmented light" role="group" aria-label="Spôsob výpočtu príjmu ' + (i + 1) + '">' +
+      '<button type="button" data-inc-method="turnover" data-id="' + x.id + '" aria-pressed="' + (x.method === 'turnover') + '">Z obratu</button>' +
+      '<button type="button" data-inc-method="net" data-id="' + x.id + '" aria-pressed="' + (x.method === 'net') + '">' + (x.kind === 'sro' ? 'Podiel na zisku' : 'Čistý príjem') + '</button></div>';
+    if(S.partner) tools += '<div class="segmented light" role="group" aria-label="Komu patrí príjem ' + (i + 1) + '">' +
+      '<button type="button" data-inc-owner="0" data-id="' + x.id + '" aria-pressed="' + (x.owner === 0) + '">Žiadateľ</button>' +
+      '<button type="button" data-inc-owner="1" data-id="' + x.id + '" aria-pressed="' + (x.owner === 1) + '">Partner</button></div>';
+    var grid, chips = '';
+    if(x.kind === 'rental'){
+      grid = incInput(x, 'amount', 'Nájom na účet mesačne', '€') + incInput(x, 'share', 'Banka započíta', '%');
+    } else if(x.method === 'turnover'){
+      grid = incInput(x, 'turnover', 'Ročný obrat (tržby)', '€') + incInput(x, 'share', 'Banka započíta z obratu', '%') +
+        (x.kind === 'sro' ? incInput(x, 'ownership', 'Váš podiel vo firme', '%') : '');
+      chips = '<div class="chips" role="group" aria-label="Percento z obratu">' + CFG.extraIncome.turnoverPresets.map(function(v){
+        var p = pctOf(v); return '<button type="button" data-inc-chip="' + p + '" data-id="' + x.id + '" aria-pressed="' + (Number(x.share) === p) + '">' + p + ' %</button>';
+      }).join('') + '</div>';
+    } else {
+      grid = incInput(x, 'amount', x.kind === 'sro' ? 'Podiel na zisku po zdanení mesačne' : 'Čistý mesačný príjem (podľa DP)', '€') + incInput(x, 'share', 'Banka započíta', '%');
+    }
+    return '<div class="debt"><div class="debt-head"><div class="inc-tools">' + tools + '</div>' +
+      '<button type="button" class="debt-x" data-inc-del="' + x.id + '" aria-label="Odstrániť príjem ' + (i + 1) + '">✕</button></div>' +
+      '<div class="debt-grid">' + grid + '</div>' + chips + '<p class="inc-out" data-inc-out="' + x.id + '"></p></div>';
+  }).join('');
+  box.querySelectorAll('[data-inc-owner]').forEach(function(b){
+    b.addEventListener('click', function(){ findInc(b.dataset.id).owner = Number(b.dataset.incOwner); renderIncomes(); update(); });
+  });
+  box.querySelectorAll('[data-inc-method]').forEach(function(b){
+    b.addEventListener('click', function(){ var x = findInc(b.dataset.id); if(x.method !== b.dataset.incMethod){ x.method = b.dataset.incMethod; x.share = defaultIncShare(x.kind, x.method); } renderIncomes(); update(); });
+  });
+  box.querySelectorAll('[data-inc-chip]').forEach(function(b){
+    b.addEventListener('click', function(){ findInc(b.dataset.id).share = Number(b.dataset.incChip); renderIncomes(); update(); });
+  });
+  box.querySelectorAll('[data-inc-del]').forEach(function(b){
+    b.addEventListener('click', function(){ S.extra = S.extra.filter(function(x){ return String(x.id) !== b.dataset.incDel; }); renderIncomes(); update(); });
+  });
+  box.querySelectorAll('input[data-inc]').forEach(function(inp){
+    inp.addEventListener('input', function(){
+      var x = findInc(inp.dataset.inc); x[inp.dataset.key] = parseNum(inp.value);
+      if(inp.dataset.key === 'share') box.querySelectorAll('[data-inc-chip][data-id="' + x.id + '"]').forEach(function(c){ c.setAttribute('aria-pressed', String(Number(c.dataset.incChip) === x.share)); });
+      update();
+    });
+  });
+}
+function incomesForCalc(){
+  return S.extra.map(function(x){
+    var pc = function(v){ return v != null ? Math.max(0, Math.min(100, v)) / 100 : null; };
+    return {kind: x.kind, method: x.method, amount: x.amount || 0, turnover: x.turnover || 0, share: pc(x.share), ownership: pc(x.ownership), owner: S.partner ? x.owner : 0};
+  });
+}
+function incomeOutText(e){
+  if(e.kind === 'rental') return 'Započíta sa <b>' + eur2(e.counted) + '</b> mesačne (' + pctOf(e.share) + ' % z nájmu ' + eur2(e.amount) + ').';
+  if(e.method === 'turnover') return 'Započíta sa <b>' + eur2(e.counted) + '</b> mesačne (obrat ' + eur(e.turnover) + ' ÷ 12 × ' + pctOf(e.share) + ' %' + (e.kind === 'sro' ? ' × podiel ' + pctOf(e.ownership) + ' %' : '') + ').';
+  return 'Započíta sa <b>' + eur2(e.counted) + '</b> mesačne (' + pctOf(e.share) + ' % z ' + eur2(e.amount) + ').';
+}
+function renderIncomeSummary(){
+  var el = document.getElementById('inc-sum');
+  R.extraIncomes.forEach(function(e, idx){
+    var x = S.extra[idx], out = x && document.querySelector('[data-inc-out="' + x.id + '"]');
+    if(out) out.innerHTML = incomeOutText(e);
+  });
+  el.hidden = !S.extra.length;
+  el.innerHTML = 'Ďalšie príjmy spolu: <b>' + eur2(R.extraCounted) + '</b> mesačne sa pripočíta k čistému príjmu. Pri prenájme banky bežne započítajú najviac 50 % zo sumy na účte (bez daňového priznania). Pri podnikaní banka vychádza buď z percenta z obratu, alebo z čistého príjmu či podielu na zisku. Konkrétne percentá závisia od banky.';
+}
+
+function findDebt(id){ return S.existing.filter(function(x){ return String(x.id) === String(id); })[0]; }
+function debtsForCalc(){
+  return S.existing.map(function(d){
+    return d.kind === 'card' ? {kind: 'card', limit: d.limit || 0, drawn: d.drawn || 0}
+      : {kind: 'loan', balance: d.balance || 0, years: d.years || 0, rate: d.rate != null ? d.rate / 100 : null, payment: d.payment || null};
+  });
+}
+
+/* ---------------- výpočet ---------------- */
+function calcInput(st, overrides){
+  var apps = [{income: st.inc1, age: st.age1}];
+  if(st.partner) apps.push({income: st.inc2, age: st.age2});
+  return Object.assign({
+    applicants: apps, children: st.hasKids ? st.kids : 0, property: st.property, ltvCategory: st.ltvCategory,
+    existing: debtsForCalc(), extraIncomes: incomesForCalc(), mode: st.mode, loan: st.loan, termYears: st.term, rate: st.rate / 100, fixation: st.fixation
+  }, overrides || {});
+}
+var IND = {
+  dti:    {name: 'DTI', full: 'Celková zadlženosť'},
+  dsti:   {name: 'DSTI', full: 'Výška splátok'},
+  stress: {name: 'Stresový test', full: 'Splátka pri vyššej sadzbe'},
+  ltv:    {name: 'LTV', full: 'Úver k hodnote nehnuteľnosti'}
+};
+function dtiLimitAvg(r){ return r.annualIncome > 0 ? r.dtiMaxDebt / r.annualIncome : CFG.dti.limit; }
+function indText(k, r){
+  var i = r.indicators;
+  if(k === 'dti') return 'zadlženosť <b>' + times(i.dti.ratio) + '</b> ročného príjmu z max. ' + times(dtiLimitAvg(r)) + '<br>max. úver podľa DTI <b>' + eur(r.maxByDti) + '</b>';
+  if(k === 'dsti') return 'splátky <b>' + pct(i.dsti.ratio * 100, 0) + '</b> príjmu po živ. minime z max. 60 %<br>max. úver podľa DSTI <b>' + eur(r.maxByDsti) + '</b>';
+  if(k === 'stress') return r.stressApplies
+    ? (r.stressed ? 'pri sadzbe <b>' + pct(r.stressRate * 100, 2) + '</b> a splatnosti ' + Math.round(r.stressTerm) + ' r.' : 'nový úver bez stresu (fixácia na celú dobu)') +
+      (r.existing.stressPayments > r.existing.dstiPayments + 0.005 ? ', existujúce úvery pri vyššej sadzbe' : '') + '<br>max. úver podľa stresu <b>' + eur(r.maxByStress) + '</b>'
+    : 'pri fixácii na celú dobu sa stres nepočíta<br>max. úver <b>bez obmedzenia</b>';
+  return r.property > 0 ? 'úver <b>' + pct(i.ltv.ratio * 100, 0) + '</b> z hodnoty, max. ' + Math.round(r.ltvLimit * 100) + ' %<br>max. úver podľa LTV <b>' + eur(r.maxByLtv) + '</b>' : 'zadajte hodnotu nehnuteľnosti';
+}
+function renderIndicators(r){
+  var i = r.indicators;
+  document.getElementById('inds').innerHTML = ['dti', 'dsti', 'stress', 'ltv'].map(function(k){
+    var u = i[k].usage, na = u == null || (k === 'stress' && !r.stressApplies);
+    var bad = !na && !i[k].ok, bind = S.mode === 'max' && r.binding === k && r.maxLoan > 0;
+    var pill = na ? '<span class="pill na">–</span>' : (bad ? '<span class="pill bad">prekročené</span>' : (bind ? '<span class="pill ok">obmedzuje</span>' : '<span class="pill ok">v limite</span>'));
+    var shown = na ? '–' : (isFinite(u) ? pct(u * 100, 0) : '∞');
+    return '<div class="ind' + (bad ? ' bad' : '') + (bind ? ' bind' : '') + '"><div class="top"><span class="name">' + IND[k].name + '</span>' + pill + '</div>' +
+      '<span class="pct">' + shown + '<span style="font-size:12px;color:var(--on-dark);font-family:var(--font-b);"> limitu</span></span>' +
+      '<span class="bar"><i style="width:' + (na ? 0 : Math.min(100, (isFinite(u) ? u : 1) * 100)) + '%"></i></span>' +
+      '<span class="s">' + indText(k, r) + '</span></div>';
+  }).join('');
+}
+var BIND_TEXT = {
+  dti: 'Obmedzuje vás celková zadlženosť (DTI): všetky úvery spolu môžu byť najviac {lim} ročného čistého príjmu.',
+  dsti: 'Obmedzuje vás výška splátok (DSTI): všetky splátky môžu byť najviac 60 % z príjmu po odpočítaní životného minima.',
+  stress: 'Obmedzuje vás stresový test: splátka sa musí zmestiť do limitu aj pri vyššej sadzbe {sr}.',
+  ltv: 'Obmedzuje vás hodnota nehnuteľnosti: banka požičia najviac {ltv} z jej hodnoty.'
+};
+function update(){
+  R = CALC.compute(calcInput(S), CFG);
+  FIELDS.forEach(function(f){ if(f.show) f.el.hidden = !f.show(); });
+  document.querySelectorAll('[data-mode]').forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)); });
+  document.querySelectorAll('[data-fix]').forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.fix === S.fixation)); });
+  document.querySelectorAll('[data-ltv]').forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.ltv === S.ltvCategory)); });
+  document.getElementById('ltv-note').textContent = R.ltvCategory.note;
+  [['sw-partner', 'partner', 'app2-box'], ['sw-kids', 'hasKids', 'kids-box']].forEach(function(x){
+    document.getElementById(x[0]).setAttribute('aria-checked', String(!!S[x[1]]));
+    document.getElementById(x[2]).hidden = !S[x[1]];
+  });
+
+  var big = document.getElementById('r-big'), main = document.getElementById('r-main'), unit = document.getElementById('r-unit');
+  var i = R.indicators, sentence = '', peekK, peekV;
+  if(S.mode === 'max'){
+    big.className = 'big';
+    document.getElementById('r-lbl').textContent = 'Maximálne vám môžu požičať';
+    main.textContent = eur(R.maxLoan);
+    unit.textContent = R.maxLoan > 0 ? 'splátka ' + eur2(R.maxPayment) + ' mesačne' : '';
+    if(R.maxLoan <= 0) sentence = R.income <= 0 ? 'Zadajte čistý mesačný príjem.' : 'Pri zadanom príjme a záväzkoch vám banka podľa pravidiel NBS hypotéku neposkytne. Pomôcť môže spoludlžník, dlhšia fixácia alebo splatenie iných úverov.';
+    else {
+      sentence = BIND_TEXT[R.binding].replace('{lim}', times(dtiLimitAvg(R))).replace('{sr}', pct(R.stressRate * 100, 2)).replace('{ltv}', Math.round(R.ltvLimit * 100) + ' %');
+      if(R.binding === 'ltv') sentence += ' Podľa príjmu by ste mohli dostať až <b>' + eur(R.maxByIncome) + '</b>, vlastné zdroje potrebujete aspoň <b>' + eur(Math.max(0, R.property - R.maxLoan)) + '</b>.';
+      if(R.binding === 'stress' && S.fixation === 'short'){
+        var alt = CALC.compute(calcInput(S, {fixation: 'long'}), CFG);
+        if(alt.maxLoan > R.maxLoan) sentence += ' S fixáciou nad 10 rokov by to bolo až <b>' + eur(alt.maxLoan) + '</b>.';
+      }
+      if(R.property > 0 && R.binding !== 'ltv') sentence += ' Vlastné zdroje na nehnuteľnosť za ' + eur(R.property) + ': <b>' + eur(Math.max(0, R.property - R.maxLoan)) + '</b>.';
+    }
+    peekK = 'Maximálny úver'; peekV = eur(R.maxLoan);
+  } else {
+    big.className = 'big status ' + (i.allOk ? 'ok' : 'bad');
+    document.getElementById('r-lbl').textContent = 'Úver ' + eur(S.loan) + ' na ' + S.term + ' ' + yw(S.term);
+    main.textContent = i.allOk ? 'Spĺňa pravidlá NBS' : 'Nespĺňa pravidlá NBS';
+    unit.textContent = 'splátka ' + eur2(i.payment) + ' mesačne';
+    var bad = ['dti', 'dsti', 'stress', 'ltv'].filter(function(k){ return !i[k].ok && !(k === 'stress' && !R.stressApplies); }).map(function(k){ return IND[k].name; });
+    sentence = (i.allOk ? 'Úver sa zmestí do všetkých limitov.' : 'Prekročené: <b>' + bad.join(', ') + '</b>.') + ' Maximálne vám môžu požičať <b>' + eur(R.maxLoan) + '</b>.';
+    peekK = 'Úver ' + eur(S.loan); peekV = i.allOk ? 'spĺňa' : 'nespĺňa';
+  }
+  document.getElementById('r-sentence').innerHTML = sentence;
+  var pkk = document.getElementById('pk-k'); if(pkk) pkk.textContent = peekK;
+  var pk = document.getElementById('pk-v'); if(pk) pk.textContent = peekV;
+  renderIndicators(R);
+  if(renderedPartner !== S.partner) renderIncomes();
+  renderIncomeSummary();
+  renderDebtSummary();
+  renderRules();
+  renderAmort();
+  postHeight();
+}
+function renderDebtSummary(){
+  var ex = R.existing, el = document.getElementById('debt-sum');
+  // dopočítané splátky ukážeme ako placeholder
+  S.existing.forEach(function(d, idx){
+    var it = ex.items[idx], inp = document.querySelector('input[data-debt="' + d.id + '"][data-key="payment"]');
+    if(inp && it && it.kind === 'loan') inp.placeholder = it.payment > 0 ? dec(it.payment, 2) : 'vypočíta sa';
+  });
+  el.hidden = !S.existing.length;
+  var implied = ex.items.filter(function(it){ return it.rateImplied; }).length;
+  el.innerHTML = 'Splátky spolu: <b>' + eur2(ex.dstiPayments) + '</b> mesačne, pri strese <b>' + eur2(ex.stressPayments) + '</b> · do DTI: <b>' + eur(ex.dtiDebt) + '</b>. ' +
+    'Pri strese počítame splátku každého úveru pri sadzbe o 2 p. b. vyššej a jeho zostávajúcej dobe' + (implied ? ' (kde chýba sadzba, dopočítali sme ju zo zostatku, doby a splátky)' : '') + '. ' +
+    'Pri kartách sa do splátok ráta 3 % z limitu a do dlhu čerpaná suma + 20 % nečerpaného limitu.';
+}
+function zmText(r){
+  var parts = [dec(CFG.subsistence.firstAdult, 2)];
+  if(r.adults > 1) parts.push(dec(CFG.subsistence.otherAdult, 2));
+  if(r.children) parts.push(r.children + ' × ' + dec(CFG.subsistence.child, 2));
+  return parts.length > 1 ? '(' + parts.join(' + ') + ')' : parts[0];
+}
+function rulesHtml(r){
+  var reduced = r.perApplicant.filter(function(p){ return p.limit < CFG.dti.limit; });
+  var dtiApps = r.perApplicant.map(function(p, k){ return (r.perApplicant.length > 1 ? (k ? 'partner' : 'žiadateľ') + ': ' : '') + times(p.limit).replace('×', '') + ' × 12 × ' + eur(p.income) + (p.extraIncome > 0 ? ' (vr. ' + eur(p.extraIncome) + ' z ďalších príjmov)' : '') + ' = ' + eur(p.maxDebt); }).join('<br>');
+  return '' +
+  '<div class="rule"><h3>DTI · celková zadlženosť <span>max. ' + times(CFG.dti.limit) + '</span></h3>' +
+    '<p>Všetky úvery spolu môžu byť najviac 8-násobok ročného čistého príjmu. Od 41 rokov sa limit znižuje o 0,25 za každý rok nad 40, ak úver splatíte až po 65. roku veku (najmenej 3-násobok).' + (reduced.length ? ' Vás sa to týka, lebo úver by ste splácali do ' + Math.floor(reduced[0].age + r.term) + ' rokov.' : '') + '</p>' +
+    '<div class="f">' + dtiApps + (r.existing.dtiDebt > 0 ? '<br>− existujúce záväzky ' + eur(r.existing.dtiDebt) : '') + '<br>= nová hypotéka najviac <b>' + eur(r.maxByDti) + '</b></div></div>' +
+  '<div class="rule"><h3>DSTI · výška splátok <span>max. 60 %</span></h3>' +
+    '<p>Splátky všetkých úverov môžu byť najviac 60 % z čistého príjmu po odpočítaní životného minima za každú dospelú osobu a dieťa (sumy platné do ' + CFG.subsistence.validUntil + ').</p>' +
+    '<div class="f">(' + eur2(r.income) + (r.extraCounted > 0 ? ' vr. ďalších príjmov ' + eur2(r.extraCounted) : '') + ' − ' + zmText(r) + ') × 60 % = ' + eur2(r.dstiMaxPayments) + (r.existing.dstiPayments > 0 ? '<br>− existujúce splátky ' + eur2(r.existing.dstiPayments) : '') + '<br>= na novú splátku <b>' + eur2(r.capacity) + '</b> → úver najviac <b>' + eur(r.maxByDsti) + '</b></div></div>' +
+  '<div class="rule"><h3>Stresový test <span>' + (r.stressed ? 'sadzba ' + pct(r.stressRate * 100, 2) : (r.stressApplies ? 'len existujúce úvery' : 'bez stresu')) + '</span></h3>' +
+    '<p>Banka overí, či by ste splátky zvládli aj pri vyššej sadzbe: nový úver +2 p. b. (pri fixácii nad 10 rokov +1 p. b., pri fixácii na celú dobu bez navýšenia), najviac na 6 %, a existujúce úvery +2 p. b. Počítame opatrne, pri zvolenej splatnosti.</p>' +
+    '<div class="f">' + (r.stressApplies
+      ? eur2(r.dstiMaxPayments) + (r.existing.stressPayments > 0 ? '<br>− existujúce splátky pri strese ' + eur2(r.existing.stressPayments) : '') +
+        '<br>= na novú splátku ' + eur2(r.capacityStress) + (r.stressed ? ' pri ' + pct(r.stressRate * 100, 2) + ', ' + Math.round(r.stressTerm) + ' ' + yw(Math.round(r.stressTerm)) : '') +
+        '<br>→ úver najviac <b>' + eur(r.maxByStress) + '</b>'
+      : 'Pri fixácii na celú dobu splatnosti sa stres nepočíta.') + '</div></div>' +
+  '<div class="rule"><h3>LTV · úver k hodnote <span>max. ' + Math.round(r.ltvLimit * 100) + ' %</span></h3>' +
+    '<p>Banka požičia len časť hodnoty nehnuteľnosti, zvyšok tvoria vlastné zdroje. ' + esc(r.ltvCategory.note) + '</p>' +
+    '<div class="f">' + (r.property > 0 ? eur(r.property) + ' × ' + Math.round(r.ltvLimit * 100) + ' % = <b>' + eur(r.maxByLtv) + '</b><br>vlastné zdroje aspoň ' + eur(r.property - r.maxByLtv) : 'Zadajte hodnotu nehnuteľnosti.') + '</div></div>';
+}
+function renderRules(){ document.getElementById('rules').innerHTML = rulesHtml(R); }
+
+/* ---------------- graf splácania ---------------- */
+var amChart = null;
+function chartLoan(){ return S.mode === 'check' ? S.loan : R.maxLoan; }
+function amortData(){
+  var L = chartLoan(), rows = CALC.amortization(L, S.rate / 100, S.term);
+  var last = rows[rows.length - 1], half = rows.filter(function(x){ return x.balance <= L / 2; })[0];
+  return {loan: L, rows: rows, pay: CALC.payment(L, S.rate / 100, S.term), totalPaid: last.principalPaid + last.interestPaid,
+    interest: last.interestPaid, halfYear: half ? half.year : null, midBalance: rows[Math.floor(rows.length / 2)]};
+}
+function kEur(v){ return v >= 1e6 ? dec(v / 1e6, 1) + ' mil. €' : (v >= 1000 ? eurF.format(Math.round(v / 1000)) + ' tis. €' : eurF.format(v) + ' €'); }
+function amortChartConfig(d, forPdf){
+  var labels = d.rows.map(function(x){ return x.year === 0 ? 'dnes' : x.year + '. r.'; });
+  return {
+    type: 'line',
+    data: {labels: labels, datasets: [
+      {label: 'Zostatok úveru', data: d.rows.map(function(x){ return Math.round(x.balance); }), fill: 'origin',
+       backgroundColor: 'rgba(94,202,213,.32)', borderColor: '#1F8E99', borderWidth: 2.5, pointRadius: 0, tension: .25, order: 2},
+      {label: 'Splatená istina spolu', data: d.rows.map(function(x){ return Math.round(x.principalPaid); }), fill: false,
+       borderColor: '#3A4654', borderWidth: 2, borderDash: [6, 5], pointRadius: 0, tension: .25, order: 1},
+      {label: 'Zaplatené úroky spolu', data: d.rows.map(function(x){ return Math.round(x.interestPaid); }), fill: false,
+       borderColor: '#D4801C', borderWidth: 3, pointRadius: 0, tension: .25, order: 0}
+    ]},
+    options: {
+      responsive: !forPdf, maintainAspectRatio: false, animation: forPdf ? false : {duration: 250}, devicePixelRatio: forPdf ? 2 : undefined,
+      interaction: {mode: 'index', intersect: false},
+      scales: {
+        x: {grid: {display: false}, ticks: {color: '#66707C', maxRotation: 0, autoSkipPadding: 12, font: {family: 'Monda', size: 11}}},
+        y: {beginAtZero: true, grid: {color: '#E1E6E9'}, border: {display: false}, ticks: {color: '#66707C', maxTicksLimit: 6, font: {family: 'Monda', size: 11}, callback: function(v){ return kEur(v); }}}
+      },
+      plugins: {
+        legend: {position: 'bottom', labels: {color: '#202325', usePointStyle: true, pointStyle: 'rectRounded', boxWidth: 10, padding: 14, font: {family: 'Monda', size: 12}}},
+        tooltip: {enabled: !forPdf, backgroundColor: '#202325', titleFont: {family: 'Monda'}, bodyFont: {family: 'Monda'}, padding: 10,
+          callbacks: {label: function(c){ return ' ' + c.dataset.label + ': ' + eur(c.parsed.y); }}}
+      }
+    }
+  };
+}
+function renderAmort(){
+  var d = amortData(), has = d.loan > 0 && typeof Chart !== 'undefined';
+  document.getElementById('am-wrap').hidden = !has;
+  document.getElementById('am-empty').hidden = has;
+  document.getElementById('am-sub').textContent = d.loan > 0 ? 'úver ' + eur(d.loan) + ' · ' + S.term + ' ' + yw(S.term) + ' · ' + pct(S.rate, 2) + ', sadzba počas celej doby rovnaká' : '';
+  if(!has){ if(amChart){ amChart.destroy(); amChart = null; } return; }
+  document.getElementById('am-stats').innerHTML =
+    '<div class="stat"><span class="k">Mesačná splátka</span><span class="v">' + eur2(d.pay) + '</span></div>' +
+    '<div class="stat"><span class="k">Celkovo zaplatíte</span><span class="v">' + eur(d.totalPaid) + '</span><span class="s">za ' + S.term + ' ' + yw(S.term) + '</span></div>' +
+    '<div class="stat"><span class="k">Z toho úroky</span><span class="v int">' + eur(d.interest) + '</span><span class="s">' + pct(d.interest / d.loan * 100, 0) + ' z výšky úveru</span></div>' +
+    '<div class="stat"><span class="k">Polovicu úveru splatíte</span><span class="v">' + (d.halfYear ? 'po ' + d.halfYear + ' ' + yw(d.halfYear) : '–') + '</span><span class="s">v polovici doby zostáva ' + eur(d.midBalance.balance) + '</span></div>';
+  var cfg = amortChartConfig(d, false);
+  if(amChart && amChart.data.labels.length === cfg.data.labels.length){
+    amChart.data.datasets.forEach(function(ds, k){ ds.data = cfg.data.datasets[k].data; });
+    amChart.update('none');
+  } else {
+    if(amChart) amChart.destroy();
+    amChart = new Chart(document.getElementById('am-chart'), cfg);
+  }
+}
+function amortImage(){
+  var c = document.createElement('canvas'); c.width = 430; c.height = 200;
+  var ch = new Chart(c, amortChartConfig(amortData(), true)), url = c.toDataURL('image/png'); ch.destroy();
+  return url;
+}
+
+/* ---------------- texty ---------------- */
+document.getElementById('disclaimer').textContent = 'Orientačný výpočet podľa makroprudenciálnych pravidiel NBS a zákona č. 90/2016 Z. z. o úveroch na bývanie platných v ' + CFG.validFor + '. Nie je ponukou úveru ani prísľubom jeho poskytnutia. Konečné posúdenie robí banka podľa vlastných podmienok, zdokladovaného príjmu a ocenenia nehnuteľnosti. Výpočet nezohľadňuje poplatky ani poistenie.';
+var A = CONFIG.advisor;
+document.getElementById('cta-phone').textContent = A.phone;
+document.getElementById('cta-phone').href = 'tel:' + A.phone.replace(/\s/g, '');
+document.getElementById('cta-link').href = A.contactUrl;
+
+/* ---------------- okná ---------------- */
+var lastFocus = null, lastModalTop = 0;
+var embeddedPage = (function(){ try{ return window.self !== window.top; }catch(e){ return true; } })();
+function openModal(m){
+  var trigger = document.activeElement;
+  if(!m.contains(trigger)) lastFocus = trigger;
+  m.hidden = false;
+  if(embeddedPage){
+    var t = trigger && trigger.getBoundingClientRect && trigger !== document.body ? trigger.getBoundingClientRect().top + window.scrollY - 140 : lastModalTop;
+    lastModalTop = Math.max(16, t);
+    m.classList.add('embedded');
+    m.style.height = document.documentElement.scrollHeight + 'px';
+    var box = m.querySelector('.modal');
+    var docH = document.documentElement.scrollHeight;
+    lastModalTop = Math.max(16, Math.min(lastModalTop, docH - box.offsetHeight - 16));
+    box.style.marginTop = lastModalTop + 'px';
+    box.style.maxHeight = 'none';
+    try{ box.scrollIntoView({block: 'nearest'}); }catch(e){}
+  }
+  var f = m.querySelector('input,button.btn-main,button'); if(f) f.focus({preventScroll: embeddedPage});
+}
+function closeModal(m){ m.hidden = true; if(lastFocus && lastFocus.focus) lastFocus.focus(); }
+var pdfModal = document.getElementById('pdf-modal'), readyModal = document.getElementById('ready-modal');
+[pdfModal, readyModal].forEach(function(m){
+  m.addEventListener('click', function(e){ if(e.target === m || e.target.closest('[data-close]')) closeModal(m); });
+});
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Escape') return;
+  [readyModal, pdfModal].some(function(m){ if(!m.hidden){ closeModal(m); return true; } return false; });
+});
+
+/* ---------------- PDF a kontakt ---------------- */
+var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+var downloadsCap = null; // používa sa len v náhľade na claude.ai, na webe zostáva prázdne
+var pdfBlob = null, pdfName = '';
+
+document.querySelectorAll('[data-adv="initials"]').forEach(function(e){
+  if(A.logo){ var img = document.createElement('img'); img.className = 'adv-logo'; img.src = A.logo; img.alt = 'Logo ' + A.name; e.replaceWith(img); }
+  else e.textContent = A.initials;
+});
+document.querySelectorAll('[data-adv="name"]').forEach(function(e){ e.textContent = A.name; });
+document.querySelectorAll('[data-adv="role"]').forEach(function(e){ e.textContent = A.title + ' · ' + A.company; });
+document.getElementById('c-privacy').href = CONFIG.privacyUrl;
+document.querySelectorAll('[data-open-pdf]').forEach(function(b){
+  b.addEventListener('click', function(){ document.getElementById('c-err').hidden = true; openModal(pdfModal); });
+});
+function formError(msg){ var e = document.getElementById('c-err'); e.textContent = msg; e.hidden = false; }
+document.getElementById('pdf-form').addEventListener('submit', function(e){
+  e.preventDefault();
+  var name = document.getElementById('c-name').value.trim(), email = document.getElementById('c-email').value.trim(), phone = document.getElementById('c-phone').value.trim();
+  if(phone.replace(/[\s+]/g, '') === '421') phone = '';
+  if(!email && !phone) return formError('Vyplňte e-mail alebo telefón, aby som sa vám mohol ozvať. Prípadne zvoľte PDF bez kontaktu.');
+  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return formError('Skontrolujte, prosím, e-mailovú adresu.');
+  if(phone && phone.replace(/\D/g, '').length < 9) return formError('Skontrolujte, prosím, telefónne číslo.');
+  if(!document.getElementById('c-consent').checked) return formError('Na odoslanie kontaktu je potrebný súhlas so spracovaním údajov.');
+  pdfModal.hidden = true;
+  startPdf(name, sendContact({name: name, email: email, phone: phone}));
+});
+document.getElementById('c-skip').addEventListener('click', function(){ pdfModal.hidden = true; startPdf(document.getElementById('c-name').value.trim(), null); });
+
+function sendContact(person){
+  if(!CONFIG.contactEndpoint) return Promise.resolve('not-configured');
+  var i = R.indicators;
+  var payload = {
+    source: 'hypotekarna-kalkulacka', createdAt: new Date().toISOString(),
+    name: person.name, email: person.email, phone: person.phone, consent: true,
+    consentText: 'Súhlasím so spracovaním osobných údajov na účel kontaktovania a bezplatnej konzultácie.',
+    website: document.getElementById('c-website').value,
+    inputs: {mode: S.mode, applicants: calcInput(S).applicants, children: S.hasKids ? S.kids : 0, property: S.property,
+      ltvCategory: S.ltvCategory, loan: S.mode === 'check' ? S.loan : null, termYears: S.term, ratePercent: S.rate, fixation: S.fixation,
+      existing: debtsForCalc(), extraIncomes: incomesForCalc()},
+    results: {maxLoan: R.maxLoan, maxByIncome: R.maxByIncome, binding: R.binding, monthlyPayment: Math.round(i.payment * 100) / 100,
+      dtiUsage: Math.round(i.dti.usage * 1000) / 10, dstiUsage: Math.round(i.dsti.usage * 1000) / 10,
+      stressUsage: R.stressApplies ? Math.round(i.stress.usage * 1000) / 10 : null, ltvRatio: i.ltv.ratio != null ? Math.round(i.ltv.ratio * 1000) / 10 : null,
+      meetsRules: i.allOk}
+  };
+  var ctrl = ('AbortController' in window) ? new AbortController() : null;
+  var t = setTimeout(function(){ if(ctrl) ctrl.abort(); }, 12000);
+  return fetch(CONFIG.contactEndpoint, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload), signal: ctrl ? ctrl.signal : undefined})
+    .then(function(res){ clearTimeout(t); return res.ok ? 'sent' : 'failed'; })
+    .catch(function(){ clearTimeout(t); return 'failed'; });
+}
+function setReady(state, contactState){
+  var h = document.getElementById('ready-h'), lead = document.getElementById('ready-lead'), st = document.getElementById('ready-status'), dl = document.getElementById('r-download');
+  document.getElementById('r-spin').hidden = state !== 'working';
+  dl.hidden = state !== 'ready';
+  if(state === 'working'){ h.textContent = 'Pripravujem PDF…'; lead.textContent = 'Chvíľku strpenia, skladám váš prepočet.'; st.hidden = true; return; }
+  if(state === 'error'){ h.textContent = 'PDF sa nepodarilo vytvoriť'; lead.textContent = 'Skúste to, prosím, znova. Ak problém pretrváva, skúste iný prehliadač.'; }
+  if(state === 'ready'){ h.textContent = 'Váš prepočet je pripravený'; lead.textContent = isMobile ? 'Ťuknite na tlačidlo nižšie. Súbor si môžete uložiť alebo poslať ďalej.' : 'Kliknutím nižšie sa PDF stiahne do vášho počítača.'; dl.focus(); }
+  st.hidden = !contactState;
+  if(contactState === 'sent'){ st.className = 'status ok'; st.textContent = 'Ďakujem, váš kontakt som dostal. Ozvem sa vám čo najskôr.'; }
+  else if(contactState === 'failed'){ st.className = 'status warn'; st.textContent = 'Kontakt sa nepodarilo odoslať. Napíšte mi, prosím, na ' + A.email + ' alebo zavolajte na ' + A.phone + '.'; }
+  else if(contactState === 'not-configured'){ st.className = 'status warn'; st.textContent = 'Ukážka: odosielanie kontaktu zatiaľ nie je zapojené, kontakt sa nikam neodoslal.'; }
+}
+var FIX_TEXT = {short: 'do 10 rokov', long: 'nad 10 rokov', full: 'na celú dobu'};
+function repIndRow(k, r){
+  var i = r.indicators[k], na = i.usage == null || (k === 'stress' && !r.stressApplies);
+  var value = k === 'dti' ? times(i.ratio) + ' príjmu' : (k === 'dsti' || k === 'stress' ? pct(i.ratio * 100, 0) + ' príjmu*' : (i.ratio != null ? pct(i.ratio * 100, 0) : '–'));
+  var limit = k === 'dti' ? times(dtiLimitAvg(r)) : (k === 'ltv' ? Math.round(r.ltvLimit * 100) + ' %' : '60 %');
+  if(k === 'stress') limit = r.stressed ? '60 % pri ' + pct(r.stressRate * 100, 2) : (r.stressApplies ? '60 %' : 'bez stresu');
+  var maxBy = k === 'dti' ? r.maxByDti : k === 'dsti' ? r.maxByDsti : k === 'stress' ? r.maxByStress : r.maxByLtv;
+  var u = na ? '–' : '<span class="rep-bar' + (i.ok ? '' : ' bad') + '"><i style="width:' + Math.min(100, (isFinite(i.usage) ? i.usage : 1) * 100) + '%"></i></span>' + pct(i.usage * 100, 0);
+  return '<tr><td><b>' + IND[k].name + '</b> · ' + IND[k].full + '</td><td>' + (na ? '–' : value) + '</td><td>' + limit + '</td><td>' + u + '</td><td>' + (isFinite(maxBy) ? eur(maxBy) : '–') + '</td><td class="' + (na ? '' : (i.ok ? 'rep-ok' : 'rep-bad')) + '">' + (na ? '–' : (i.ok ? 'áno' : 'nie')) + '</td></tr>';
+}
+function termRows(compact){
+  var terms = [20, 25, 30].filter(function(t){ return t <= CFG.maxTermYears; });
+  if(terms.indexOf(S.term) === -1) terms.push(S.term);
+  terms.sort(function(a, b){ return a - b; });
+  return terms.map(function(t){
+    var x = CALC.compute(calcInput(S, {termYears: t}), CFG);
+    var cur = t === S.term ? ' style="font-weight:700"' : '';
+    var payCell = S.mode === 'check' ? CALC.payment(S.loan, S.rate / 100, t) : x.maxPayment;
+    if(compact) return '<tr' + cur + '><td>' + t + ' r.</td><td>' + eur(x.maxLoan) + '</td><td>' + eur2(payCell) + '</td></tr>';
+    return '<tr' + cur + '><td>' + t + ' rokov</td><td>' + eur(x.maxLoan) + '</td><td>' + eur2(x.maxPayment) + '</td>' + (S.mode === 'check' ? '<td>' + eur2(CALC.payment(S.loan, S.rate / 100, t)) + '</td>' : '') + '</tr>';
+  });
+}
+function buildReport(name){
+  var r = R, i = r.indicators, date = new Date().toLocaleDateString('sk-SK');
+  var apps = r.perApplicant.map(function(p, k){ return '<div class="rep-kv"><span>' + (k ? 'Partner' : 'Žiadateľ') + '</span><b>' + eur(p.baseIncome) + (p.extraIncome > 0 ? ' + ďalšie ' + eur(p.extraIncome) : '') + ' · ' + p.age + ' r.</b></div>'; }).join('');
+  var ex = r.existing;
+  var resultTitle = S.mode === 'max' ? 'Maximálna výška úveru' : 'Úver ' + eur(S.loan);
+  var resultBig = S.mode === 'max' ? eur(r.maxLoan) : (i.allOk ? 'Spĺňa pravidlá' : 'Nespĺňa pravidlá');
+  document.getElementById('rep').innerHTML =
+    '<div class="rep-head">' +
+      '<div class="rep-brand">' + (A.logo ? '<img class="rep-logo" alt="" src="' + A.logo + '">' : '<span class="mono">' + esc(A.initials) + '</span>') +
+        '<div><b>' + esc(A.name) + (A.company ? ' <span class="co">| ' + esc(A.company) + '</span>' : '') + '</b><span>' + esc(A.title) + '</span></div></div>' +
+      '<div class="rep-title"><h1>Hypotekárna kalkulačka</h1><p>Modelový prepočet' + (name ? ' pre <b>' + esc(name) + '</b>' : '') + '</p><p>' + date + '</p></div>' +
+    '</div>' +
+    '<p class="rep-intro">Každá banka musí pri hypotéke dodržať pravidlá NBS: celkovú zadlženosť (DTI), výšku splátok (DSTI), stresový test a pomer úveru k hodnote nehnuteľnosti (LTV). Prepočet ukazuje, ako ich spĺňate. Rád vám pomôžem vybrať najvýhodnejšiu banku.</p>' +
+    '<div class="rep-grid">' +
+      '<div class="rep-box"><h3>Vstupné údaje</h3>' + apps +
+        '<div class="rep-kv"><span>Deti</span><b>' + r.children + '</b></div>' +
+        '<div class="rep-kv"><span>Hodnota nehnuteľnosti</span><b>' + (r.property > 0 ? eur(r.property) : 'nezadaná') + '</b></div>' +
+        '<div class="rep-kv"><span>Typ úveru</span><b>' + esc(r.ltvCategory.label) + '</b></div>' +
+        '<div class="rep-kv"><span>Splatnosť / sadzba</span><b>' + S.term + ' r. / ' + pct(S.rate, 2) + '</b></div>' +
+        '<div class="rep-kv"><span>Fixácia</span><b>' + FIX_TEXT[S.fixation] + '</b></div>' +
+        '<div class="rep-kv"><span>Existujúce záväzky</span><b>' + (S.existing.length ? eur2(ex.dstiPayments) + ' / mes. (stres ' + eur2(ex.stressPayments) + '), dlh ' + eur(ex.dtiDebt) : 'žiadne') + '</b></div>' +
+      '</div>' +
+      '<div class="rep-box rep-res"><h3>' + resultTitle + '</h3>' +
+        '<div class="big" style="' + (S.mode === 'check' ? 'font-size:30px;color:' + (i.allOk ? 'var(--accent)' : 'var(--c-gap)') : '') + '">' + resultBig + '</div>' +
+        '<div class="sub">' + (S.mode === 'max' ? (r.maxLoan > 0 ? 'obmedzuje ' + IND[r.binding].name + ' · ' + S.term + ' rokov · ' + pct(S.rate, 2) : 'pri zadaných údajoch úver nie je možný') : 'maximálne môžete dostať ' + eur(r.maxLoan)) + '</div>' +
+        '<div class="rep-tiles">' +
+          '<div><span class="k">Mesačná splátka</span><span class="v">' + eur2(i.payment) + '</span></div>' +
+          '<div><span class="k">Splátka pri strese</span><span class="v">' + (r.stressed ? eur2(i.paymentStress) : '–') + '</span></div>' +
+          '<div><span class="k">Limit všetkých splátok</span><span class="v">' + eur2(r.dstiMaxPayments) + '</span></div>' +
+          '<div><span class="k">Podľa príjmu najviac</span><span class="v" style="color:var(--accent)">' + eur(r.maxByIncome) + '</span></div>' +
+        '</div></div>' +
+    '</div>' +
+    '<div class="rep-box rep-ind"><h3>Ukazovatele NBS' + (S.mode === 'max' ? ' pri maximálnom úvere' : '') + '</h3><table><thead><tr><th>Ukazovateľ</th><th>Hodnota</th><th>Limit</th><th>Využitie limitu</th><th>Max. úver</th><th>Spĺňa</th></tr></thead><tbody>' +
+      ['dti', 'dsti', 'stress', 'ltv'].map(function(k){ return repIndRow(k, r); }).join('') +
+      '</tbody></table><p style="margin:6px 0 0;font-size:10.5px;color:var(--muted);line-height:1.45;">* príjem po odpočítaní životného minima (' + eur2(r.subsistence) + '). Stresový test: sadzba +2 p. b. (najviac 6 %) pri zvolenej splatnosti.</p></div>' +
+    (amortData().loan > 0 ? '<div class="rep-two">' +
+      '<div class="rep-box rep-chart"><h3>Ako bude úver klesať · ' + eur(amortData().loan) + '</h3><img alt="" src="' + amortImage() + '"></div>' +
+      '<div class="rep-box rep-terms"><h3>Splatnosť a splátka</h3><table><thead><tr><th>Splatnosť</th><th>Max. úver</th><th>Splátka</th></tr></thead><tbody>' +
+        termRows(true).join('') + '</tbody></table>' +
+        '<p style="margin:8px 0 0;font-size:11.5px;color:var(--slate);line-height:1.45;">Za ' + S.term + ' ' + yw(S.term) + ' zaplatíte spolu <b>' + eur(amortData().totalPaid) + '</b>, z toho úroky <b style="color:#B47812">' + eur(amortData().interest) + '</b> (pri nezmenenej sadzbe).</p></div>' +
+    '</div>' : '') +
+    '<div class="rep-foot"><div><b>' + esc(A.name) + (A.company ? ' · ' + esc(A.company) : '') + '</b><span class="line">' + esc(A.title) + '</span><span class="line">' + esc(A.phone) + ' · ' + esc(A.email) + ' · ' + esc(A.web) + '</span></div>' +
+      '<div class="say">Chcete to prebrať osobne?<br>Konzultácia je bezplatná.</div></div>' +
+    '<p class="rep-disc">Orientačný výpočet podľa makroprudenciálnych pravidiel NBS a zákona č. 90/2016 Z. z. o úveroch na bývanie platných v ' + CFG.validFor + '. Nie je ponukou úveru ani prísľubom jeho poskytnutia. Konečné posúdenie robí banka podľa vlastných podmienok, zdokladovaného príjmu a ocenenia nehnuteľnosti. Banky môžu časť úverov poskytnúť v rámci výnimiek nad uvedené limity. Výpočet nezohľadňuje poplatky ani poistenie.</p>';
+}
+function makePdf(name){
+  if(typeof html2canvas === 'undefined' || !window.jspdf) return Promise.reject(new Error('kniznice'));
+  buildReport(name);
+  var el = document.getElementById('rep'), imgs = el.querySelectorAll('img');
+  var waitImgs = Promise.all([].map.call(imgs, function(i){ return i.complete ? 1 : new Promise(function(res){ i.onload = i.onerror = res; }); }));
+  return Promise.all([document.fonts ? document.fonts.ready : 1, waitImgs]).then(function(){
+    return html2canvas(el, {scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: 794});
+  }).then(function(canvas){
+    var pdf = new window.jspdf.jsPDF({unit: 'mm', format: 'a4', orientation: 'portrait', compress: true});
+    var W = 210, H = 297, h = canvas.height * W / canvas.width, w = W;
+    if(h > H){ w = W * H / h; h = H; }
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', (W - w) / 2, 0, w, h);
+    pdf.setProperties({title: 'Hypotekárna kalkulačka – ' + A.name, author: A.name});
+    return pdf.output('blob');
+  });
+}
+function startPdf(name, contactPromise){
+  pdfBlob = null;
+  pdfName = 'Hypotekarna-kalkulacka-' + A.initials + '-' + new Date().toISOString().slice(0, 10) + '.pdf';
+  setReady('working'); openModal(readyModal);
+  var job = makePdf(name).then(function(b){ pdfBlob = b; return 'ok'; }, function(){ return 'error'; });
+  Promise.all([job, contactPromise || Promise.resolve(null)]).then(function(r){ setReady(r[0] === 'ok' ? 'ready' : 'error', r[1]); });
+}
+function deliver(blob, filename){
+  if(downloadsCap) return downloadsCap.save({filename: filename, data: blob}).catch(function(e){ if(!e || e.code !== 'declined') anchorDownload(blob, filename); });
+  var file = null;
+  try{ file = new File([blob], filename, {type: 'application/pdf'}); }catch(e){}
+  if(isMobile && file && navigator.canShare && navigator.canShare({files: [file]})){
+    return navigator.share({files: [file], title: 'Hypotekárna kalkulačka'}).catch(function(e){ if(!e || e.name !== 'AbortError') anchorDownload(blob, filename); });
+  }
+  anchorDownload(blob, filename);
+}
+function anchorDownload(blob, filename){
+  var url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = filename; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+}
+document.getElementById('r-download').addEventListener('click', function(){ if(pdfBlob) deliver(pdfBlob, pdfName); });
+
+/* ---------------- vloženie do stránky (iframe) a mobilný pruh ---------------- */
+var embedded = embeddedPage, lastH = 0;
+function postHeight(){
+  if(!embedded || !window.parent) return;
+  var h = Math.ceil(document.body.getBoundingClientRect().height); // skutočná výška obsahu (nie okna)
+  if(Math.abs(h - lastH) > 2){ lastH = h; window.parent.postMessage({type: 'mk-calc-height', id: 'hypoteka', height: h}, '*'); }
+}
+if(embedded){
+  if('ResizeObserver' in window) new ResizeObserver(postHeight).observe(document.body);
+  var resend = function(){ lastH = 0; postHeight(); };
+  window.addEventListener('load', resend);
+  [400, 1200, 3000].forEach(function(ms){ setTimeout(resend, ms); });
+  window.addEventListener('message', function(e){ if(e.data && e.data.type === 'mk-calc-height-request') resend(); });
+}
+var peek = document.getElementById('peek');
+if(embedded) peek.remove();
+else if('IntersectionObserver' in window){
+  new IntersectionObserver(function(en){ peek.classList.toggle('show', !en[0].isIntersecting && en[0].boundingClientRect.top < 0); }).observe(document.getElementById('band'));
+}
+
+/* ---------------- štart ---------------- */
+FIELDS.forEach(buildField);
+FIELDS.forEach(function(f){ syncField(f); });
+renderDebts();
+renderIncomes();
+update();
+})();
+</script>
+</body>
+</html>

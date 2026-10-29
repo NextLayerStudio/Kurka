@@ -27,6 +27,7 @@ const navLinks = [
       { href: "/sluzby/dochodok", label: "Renta a dôchodok" },
     ]
   },
+  { href: "/kalkulacky", label: "Kalkulačky" },
   { href: "/spoluprace", label: "Spolupráca" },
   { href: "/blog", label: "Blog" },
   { href: "/kontakt", label: "Kontakt" },

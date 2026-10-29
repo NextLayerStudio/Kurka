@@ -50,10 +50,10 @@ export default function BlogPage() {
         {/* Banner background image */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/Untitled-1.svg"
-            alt="Banner background"
+            src="/blog-banner.jpg"
+            alt="Noviny Financial Insights na pracovnom stole"
             fill
-            className="object-cover object-right md:object-cover"
+            className="object-cover object-center"
             priority
           />
           {/* Dark overlay for better text readability */}

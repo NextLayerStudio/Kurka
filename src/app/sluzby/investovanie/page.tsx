@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Head from "next/head";
 import ContactModal from "../../../components/ContactModal";
+import CalculatorCta from "@/components/CalculatorCta";
 
 interface InvestmentCompany {
   name: string;
@@ -127,10 +128,10 @@ export default function InvestovaniePage() {
         {/* Banner background image */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/Investovanie.svg"
-            alt="Investovanie background"
+            src="/investovanie-banner.jpg"
+            alt="Socha býka – symbol investovania"
             fill
-            className="object-cover object-right md:object-right"
+            className="object-cover object-center"
             priority
           />
           {/* Dark overlay for better text readability */}
@@ -193,17 +194,62 @@ export default function InvestovaniePage() {
             </div>
           </div>
 
-          {/* Image Section */}
+          {/* Infographics Section */}
           <div className="mb-16">
-            <div className="max-w-4xl mx-auto">
-              <Image
-                src="/image copy 2.png"
-                alt="Investovanie - Finančné poradenstvo"
-                width={800}
-                height={600}
-                className="w-full h-auto rounded-xl object-cover"
-              />
+            <div className="text-center mb-10 md:mb-12">
+              <h3 className="text-2xl md:text-3xl font-bold text-[#202325] mb-3">
+                Inflácia vs. sporenie a investovanie
+              </h3>
+              <p className="text-gray-600 max-w-2xl mx-auto text-base md:text-lg leading-relaxed">
+                Porovnanie pri ročnej inflácii 3&nbsp;%. Zelené stĺpce ukazujú reálny zisk, červené stratu oproti tomu, čo ste vložili.
+              </p>
             </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 lg:gap-10 max-w-7xl mx-auto">
+              <figure className="group bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
+                <div className="bg-gradient-to-br from-[#5ECAD5]/10 to-white px-5 py-4 md:px-6 md:py-5 border-b border-gray-100">
+                  <span className="inline-block text-xs font-semibold uppercase tracking-wider text-[#5ECAD5] mb-1">
+                    Jednorazový vklad
+                  </span>
+                  <figcaption className="text-lg md:text-xl font-semibold text-[#202325]">
+                    35&nbsp;000&nbsp;€ na 5 rokov
+                  </figcaption>
+                </div>
+                <div className="p-4 sm:p-5 md:p-6 bg-[#f8f9fa]">
+                  <Image
+                    src="/jednorazova-investicia-inflacia.webp"
+                    alt="Infografika: jednorazová investícia 35 000 € – porovnanie bežného účtu, sporenia a fondov po inflácii"
+                    width={1200}
+                    height={700}
+                    className="w-full h-auto rounded-lg object-contain"
+                  />
+                </div>
+              </figure>
+
+              <figure className="group bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
+                <div className="bg-gradient-to-br from-[#5ECAD5]/10 to-white px-5 py-4 md:px-6 md:py-5 border-b border-gray-100">
+                  <span className="inline-block text-xs font-semibold uppercase tracking-wider text-[#5ECAD5] mb-1">
+                    Pravidelné sporenie
+                  </span>
+                  <figcaption className="text-lg md:text-xl font-semibold text-[#202325]">
+                    100&nbsp;€ mesačne na 10 rokov
+                  </figcaption>
+                </div>
+                <div className="p-4 sm:p-5 md:p-6 bg-[#f8f9fa]">
+                  <Image
+                    src="/sporenie-vs-investovanie-inflacia.webp"
+                    alt="Infografika: mesačné sporenie 100 € – porovnanie účtov a fondov so skutočnou hodnotou po inflácii"
+                    width={1200}
+                    height={700}
+                    className="w-full h-auto rounded-lg object-contain"
+                  />
+                </div>
+              </figure>
+            </div>
+
+            <p className="text-center text-sm text-gray-500 mt-8 max-w-3xl mx-auto leading-relaxed">
+              Ilustračné výpočty – skutočné výsledky závisia od produktu, poplatkov a vývoja trhu. Pri konzultácii pripravíme pre vás model na mieru.
+            </p>
           </div>
 
           {/* Three Column Article Style */}
@@ -302,6 +348,8 @@ export default function InvestovaniePage() {
               Investovanie nie je hazard, ale ani zaručená istota. Pravdou je, že každý typ investície nesie určité riziko – preto je dôležité vedieť, kam, kedy a ako investovať. Nestrkáš peniaze naslepo, ale s plánom, ktorý zohľadňuje tvoje ciele, čas a ochotu riskovať. So správnym nastavením môžeš svoje peniaze zhodnocovať dlhodobo a rozumne, nie nechať ich ležať a strácať hodnotu.
             </p>
           </div>
+
+          <CalculatorCta slug="investicie" className="mt-12" />
 
           {/* Simple CTA */}
           <div className="text-center mt-16 pt-8 border-t border-gray-200">

@@ -11,8 +11,10 @@ export default function ConditionalLayout({ children }: ConditionalLayoutProps) 
   const pathname = usePathname();
   const isFormularPage = pathname === '/formular';
   const isAdminPage = pathname === '/admin';
+  const isCalculatorEmbedPage =
+    pathname.startsWith('/kalkulacky/') && pathname !== '/kalkulacky';
 
-  if (isFormularPage || isAdminPage) {
+  if (isFormularPage || isAdminPage || isCalculatorEmbedPage) {
     // For formular and admin pages, only render the page content (children[1])
     // children[0] = Navbar, children[1] = page content, children[2] = Footer
     const childrenArray = Array.isArray(children) ? children : [children];

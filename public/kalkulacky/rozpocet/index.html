@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rodinný rozpočet</title>
+<meta name="theme-color" content="#1B1B1E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Rozpočet">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!-- Všetko je lokálne: appka sa nespája so žiadnym cudzím serverom. -->
+<link href="fonts.css" rel="stylesheet">
+<script src="vendor/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#FAFAF8;
+  --card:#FFFFFF;
+  --text:#1C1C1E;
+  --muted:#6B6B6E;
+  --border:#E8E6E1;
+  --accent:#4FA8AE;
+  --accent-dark:#397D82;
+  --accent-soft:#E4F3F3;
+  --dark:#1B1B1E;
+  --dark2:#28282C;
+  --danger:#C25450;
+  --danger-soft:#F7E6E5;
+  --radius:14px;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --font-d:'Monda',sans-serif;
+  --font-b:'Inter',system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141416; --card:#1F1F22; --text:#F1F0ED; --muted:#A3A2A0;
+    --border:#302F33; --accent-soft:#1E3436; --danger-soft:#3A2321; --dark2:#0F0F11;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141416; --card:#1F1F22; --text:#F1F0ED; --muted:#A3A2A0;
+  --border:#302F33; --accent-soft:#1E3436; --danger-soft:#3A2321; --dark2:#0F0F11;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg); color:var(--text); font-family:var(--font-b);
+  -webkit-font-smoothing:antialiased; line-height:1.5;
+}
+h1,h2,h3,.num,.brand,.tabbtn,button{font-family:var(--font-d);}
+button{font-family:var(--font-b);}
+.num,.brand,.tabbtn{font-family:var(--font-d);}
+img,svg{max-width:100%;}
+a{color:var(--accent-dark);}
+.wrap{max-width:720px;margin:0 auto;}
+
+/* ---- top bar ---- */
+.topbar{background:var(--dark);color:#fff;padding:18px 16px 14px;}
+.topbar .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.brand{font-size:19px;font-weight:700;letter-spacing:.2px;}
+.brand small{display:block;font-family:var(--font-b);font-weight:400;font-size:12px;color:#B9B9BC;margin-top:2px;}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;}
+.tbtn{
+  background:transparent;border:1px solid rgba(255,255,255,.28);color:#fff;
+  padding:7px 12px;border-radius:20px;font-size:12.5px;cursor:pointer;
+  transition:background .15s ease;
+}
+.tbtn:hover{background:rgba(255,255,255,.1);}
+.tbtn:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+
+/* ---- tabs ---- */
+.tabs{
+  background:var(--card);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:20;
+}
+.tabs .wrap{display:flex;gap:4px;overflow-x:auto;padding:8px 16px;scrollbar-width:none;}
+.tabs .wrap::-webkit-scrollbar{display:none;}
+.tabbtn{
+  flex:0 0 auto;background:transparent;border:none;color:var(--muted);
+  padding:9px 14px;border-radius:10px;font-size:14.5px;cursor:pointer;white-space:nowrap;
+}
+.tabbtn.active{background:var(--accent-soft);color:var(--accent-dark);font-weight:700;}
+
+main{padding:18px 16px 60px;}
+
+/* ---- cards ---- */
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px;margin-bottom:14px;box-shadow:var(--shadow);
+}
+.card h2{margin:0 0 4px;font-size:17px;}
+.card .sub{color:var(--muted);font-size:12.5px;margin-bottom:14px;}
+.card-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:2px;flex-wrap:wrap;}
+.card-head h2{margin:0;}
+.card-head .hint{color:var(--muted);font-size:12.5px;}
+
+/* ---- month nav ---- */
+.monthnav{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px;}
+.monthnav button{
+  background:var(--card);border:1px solid var(--border);width:34px;height:34px;border-radius:50%;
+  cursor:pointer;font-size:16px;color:var(--text);display:flex;align-items:center;justify-content:center;
+}
+.monthnav button:hover{background:var(--accent-soft);}
+.monthnav .label{font-weight:700;font-size:15.5px;min-width:150px;text-align:center;}
+
+/* ---- stat grid ---- */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.tile{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px 16px;box-shadow:var(--shadow);
+}
+.tile .lbl{font-size:11px;letter-spacing:.03em;color:var(--muted);margin-bottom:6px;}
+.tile .val{font-family:var(--font-d);font-size:23px;font-weight:700;}
+.tile.accent{background:var(--accent);border-color:var(--accent);}
+.tile.accent .lbl{color:rgba(255,255,255,.85);}
+.tile.accent .val{color:#fff;}
+.tile.accent .foot{color:rgba(255,255,255,.85);font-size:11.5px;margin-top:4px;}
+
+/* ---- forms ---- */
+label{display:block;font-size:11.5px;color:var(--muted);letter-spacing:.02em;margin-bottom:5px;margin-top:12px;}
+label:first-of-type{margin-top:0;}
+input[type=text],input[type=number],select,input[type=month]{
+  width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:10px;
+  background:var(--bg);color:var(--text);font-size:15px;font-family:var(--font-b);
+}
+input::placeholder{color:#9C9C9C;}
+.row{display:flex;gap:10px;}
+.row > *{flex:1;min-width:0;}
+.seg{display:flex;gap:8px;margin-top:0;}
+.seg button{
+  flex:1;padding:11px 8px;border:1px solid var(--border);border-radius:10px;background:var(--card);
+  color:var(--text);cursor:pointer;font-size:14px;
+}
+.seg button.active.exp{background:var(--danger);border-color:var(--danger);color:#fff;}
+.seg button.active.inc{background:var(--accent);border-color:var(--accent);color:#fff;}
+.seg button.active.inv{background:var(--dark2);border-color:var(--dark2);color:#fff;}
+.checkline{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:13.5px;color:var(--muted);}
+.checkline input{width:auto;}
+.btn-primary{
+  width:100%;margin-top:16px;background:var(--accent);color:#fff;border:none;
+  padding:13px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font-d);
+}
+.btn-primary:hover{background:var(--accent-dark);}
+.btn-ghost{
+  background:transparent;border:1px solid var(--border);color:var(--text);
+  padding:8px 12px;border-radius:8px;font-size:13px;cursor:pointer;
+}
+
+/* ---- transaction / goal rows ---- */
+.txrow{
+  display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);
+}
+.txrow:last-child{border-bottom:none;}
+.txrow .ico{font-size:19px;width:30px;text-align:center;flex:none;}
+.txrow .mid{flex:1;min-width:0;}
+.txrow .mid .cat{font-size:14px;font-weight:600;}
+.txrow .mid .note{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.txrow .amt{font-weight:700;font-size:14.5px;white-space:nowrap;}
+.txrow .amt.exp{color:var(--danger);}
+.txrow .amt.inc{color:var(--accent-dark);}
+.txrow .amt.inv{color:var(--text);}
+.txrow select{width:auto;padding:4px 6px;font-size:11.5px;border-radius:6px;}
+.txrow .del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 4px;flex:none;}
+.txrow .del:hover{color:var(--danger);}
+.tag-rec{font-size:9.5px;background:var(--accent-soft);color:var(--accent-dark);padding:1px 6px;border-radius:8px;margin-left:6px;}
+.empty{color:var(--muted);font-size:13.5px;text-align:center;padding:24px 10px;}
+
+/* ---- budget rule ---- */
+.rulebar{margin-top:14px;}
+.rulebar .rh{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;}
+.rulebar .rh b{font-weight:700;}
+.barbg{height:8px;border-radius:6px;background:var(--border);overflow:hidden;position:relative;margin-bottom:2px;}
+.barfg{height:100%;border-radius:6px;background:var(--accent);}
+.barfg.over{background:var(--danger);}
+.rulesub{font-size:11.5px;color:var(--muted);margin-bottom:14px;}
+.rulenote{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5;}
+
+/* ---- goals ---- */
+.goal{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;}
+.goal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.goal-head .name{font-weight:700;font-size:15px;}
+.goal-head .type{font-size:11.5px;color:var(--muted);}
+.goal .del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;}
+.goal .del:hover{color:var(--danger);}
+.goal .barbg{margin-top:10px;height:9px;}
+.goal .figs{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:5px;}
+.goal .horizon{display:inline-block;margin-top:9px;font-size:11px;background:var(--accent-soft);color:var(--accent-dark);padding:3px 8px;border-radius:8px;}
+
+/* ---- horizon info cards ---- */
+.hz{border:1px solid var(--border);border-radius:12px;padding:13px 14px;margin-bottom:10px;}
+.hz .ht{font-weight:700;font-size:14px;margin-bottom:4px;}
+.hz .hd{font-size:12.5px;color:var(--muted);line-height:1.5;}
+
+/* ---- insights ---- */
+.insight{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13.5px;}
+.insight:last-child{border-bottom:none;}
+.insight .dot{flex:none;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-top:7px;}
+.insight.cattoggle{cursor:pointer;}
+.insight.cattoggle .caret{margin-left:auto;color:var(--muted);flex:none;font-size:15px;line-height:1.3;}
+.insight.cattoggle.open{border-bottom:none;}
+.catlist{padding:0 0 8px 16px;border-bottom:1px solid var(--border);}
+.catitem{display:flex;gap:10px;align-items:baseline;font-size:12.5px;padding:5px 0;border-bottom:1px dashed var(--border);}
+.catitem:last-child{border-bottom:none;}
+.catitem .cday{color:var(--muted);flex:none;min-width:44px;}
+.catitem .cnote{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.catitem .camt{font-weight:600;white-space:nowrap;color:var(--danger);}
+
+/* ---- chart wrap ---- */
+.chartwrap{position:relative;height:230px;margin-top:8px;}
+.chartwrap.tall{height:270px;}
+.legend{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:14px;}
+.legend .li{display:flex;align-items:center;gap:6px;font-size:12.5px;}
+.legend .sw{width:10px;height:10px;border-radius:3px;flex:none;}
+
+/* ---- asset inputs ---- */
+.assetrow{margin-bottom:12px;}
+.assetrow .al{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;margin-bottom:6px;}
+
+/* ---- numbered steps (návod) ---- */
+.steps{counter-reset:step;list-style:none;margin:0;padding:0;}
+.steps li{counter-increment:step;position:relative;padding:0 0 18px 38px;}
+.steps li:last-child{padding-bottom:0;}
+.steps li::before{
+  content:counter(step);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;
+  background:var(--accent-soft);color:var(--accent-dark);font-weight:700;font-size:13px;
+  display:flex;align-items:center;justify-content:center;
+}
+.steps li b{display:block;margin-bottom:3px;font-size:14.5px;}
+.steps li p{margin:0;color:var(--muted);font-size:13.5px;}
+
+/* ---- modal ---- */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:100;
+}
+.overlay.show{display:flex;}
+.modal{
+  background:var(--card);width:100%;max-width:480px;border-radius:18px 18px 0 0;padding:20px;
+  max-height:85vh;overflow-y:auto;
+}
+@media (min-width:640px){
+  .overlay{align-items:center;}
+  .modal{border-radius:16px;}
+}
+.modal h3{margin:0 0 4px;font-size:17px;}
+.modal .close{position:absolute;}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.modal-head button{background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;}
+.settgrid{display:grid;grid-template-columns:1fr 90px;gap:8px 12px;align-items:center;margin-top:12px;}
+.settgrid .l{font-size:13.5px;}
+.settgrid input{padding:8px;text-align:right;}
+.disclaimer{font-size:11.5px;color:var(--muted);text-align:center;padding:10px 16px 30px;line-height:1.6;}
+.toast{
+  position:fixed;bottom:calc(18px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--dark);color:#fff;
+  padding:10px 18px;border-radius:20px;font-size:13.5px;z-index:200;opacity:0;pointer-events:none;
+  transition:opacity .2s ease,transform .2s ease;display:flex;align-items:center;gap:10px;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);pointer-events:auto;}
+.banner{border-left:4px solid var(--accent);}
+.banner p{margin:0 0 12px;font-size:13.5px;color:var(--muted);line-height:1.5;}
+.banner .btns{display:flex;gap:8px;flex-wrap:wrap;}
+.banner .btn-primary{width:auto;margin-top:0;padding:9px 14px;font-size:13.5px;}
+.toast .toast-undo{background:none;border:none;color:#8FD6DB;font-weight:700;font-size:13.5px;cursor:pointer;padding:0;text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand">💶 Rodinný rozpočet<small>prehľad financií, ktorý zvládne aj bez tabuliek</small></div>
+    <div class="toolbar">
+      <button class="tbtn" data-action="open-settings">⚙️ Nastavenia</button>
+      <button class="tbtn" data-action="backup">💾 Záloha</button>
+      <button class="tbtn" data-action="restore">📂 Obnoviť</button>
+      <button class="tbtn" data-action="csv">⬇️ CSV</button>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="wrap">
+    <button class="tabbtn" data-tab="prehlad">Prehľad</button>
+    <button class="tabbtn" data-tab="rok">Rok</button>
+    <button class="tabbtn" data-tab="majetok">Majetok</button>
+    <button class="tabbtn" data-tab="ciele">Ciele</button>
+    <button class="tabbtn" data-tab="navod">Návod</button>
+  </div>
+</nav>
+
+<main class="wrap" id="content"></main>
+
+<p class="disclaimer">Dáta sa ukladajú len v tomto zariadení — nikam sa neodosielajú, žiadny server ani účet. Použi „Záloha" na export a „Obnoviť" na import. Nástroj má informatívny charakter a nie je investičným ani finančným odporúčaním.</p>
+
+<div class="overlay" id="confirmOverlay">
+  <div class="modal">
+    <div class="modal-head"><h3 id="confirmTitle">Naozaj?</h3><button data-action="confirm-no">✕</button></div>
+    <div class="sub" id="confirmText" style="color:var(--muted);font-size:13px;margin-bottom:16px;"></div>
+    <button class="btn-primary" style="background:var(--danger);" data-action="confirm-yes" id="confirmYes">Áno, vymazať</button>
+    <button class="btn-ghost" style="width:100%;margin-top:10px;" data-action="confirm-no">Zrušiť</button>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept=".json,application/json,text/plain" style="display:none">
+<div id="toast" class="toast"></div>
+
+<div class="overlay" id="settingsOverlay">
+  <div class="modal">
+    <div class="modal-head"><h3>Nastavenia</h3><button data-action="close-settings">✕</button></div>
+    <div class="sub" style="color:var(--muted);font-size:12.5px;">Ročné výnosy/zmeny použité v predikcii majetku na 10 rokov (v %). Záporné číslo = hodnota postupne klesá (napr. splácanie úveru alebo amortizácia auta).</div>
+    <div class="settgrid" id="ratesGrid"></div>
+    <button class="btn-primary" data-action="save-settings">Uložiť nastavenia</button>
+    <button class="btn-ghost" style="width:100%;margin-top:10px;" data-action="reset-all">Vynulovať všetky dáta appky</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= DATA ================= */
+var STORAGE_KEY = 'rodinny_rozpocet_v1';
+var MONTHS = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'];
+
+var EXP_CATS = [
+  {id:'byvanie',emoji:'🏠',label:'Bývanie'},
+  {id:'doprava',emoji:'🚗',label:'Doprava'},
+  {id:'potraviny',emoji:'🍎',label:'Potraviny'},
+  {id:'zabava',emoji:'🎉',label:'Zábava'},
+  {id:'oblecenie',emoji:'👕',label:'Oblečenie'},
+  {id:'zdravie',emoji:'💊',label:'Zdravie'},
+  {id:'ucty',emoji:'📱',label:'Komunikácia'},
+  {id:'vzdelanie',emoji:'🎓',label:'Vzdelanie'},
+  {id:'poistky',emoji:'🏥',label:'Poistky'},
+  {id:'deti',emoji:'🧸',label:'Deti'},
+  {id:'podnikanie',emoji:'🏢',label:'Podnikanie'},
+  {id:'ostatne',emoji:'💰',label:'Ostatné'}
+];
+var INC_CATS = [
+  {id:'mzda',emoji:'💼',label:'Mzda'},
+  {id:'inyprijem',emoji:'🎁',label:'Iný príjem'}
+];
+var INV_CATS = [
+  {id:'etf',emoji:'📈',label:'ETF / Akcie'},
+  {id:'sporenie',emoji:'🛟',label:'Sporenie'}
+];
+var BAND_SPOTREBA = ['doprava','potraviny','zabava','oblecenie','zdravie','ucty','vzdelanie','podnikanie','ostatne'];
+
+var KEYWORDS = {
+  byvanie:['najom','byvanie','najomne','hypoteka'],
+  doprava:['benzin','nafta','shell','slovnaft','omv','mhd','autobus','vlak','parkovanie','servis'],
+  potraviny:['lidl','tesco','kaufland','billa','coop','fresh','potraviny','terno'],
+  zabava:['netflix','spotify','disney','hbo','kino','restauracia','bar','pivo','dovolenka','vylet'],
+  oblecenie:['zara','h&m','obuv','oblecenie','nike','adidas'],
+  zdravie:['lekaren','doktor','zubar','lekar','vitaminy','nemocnica'],
+  ucty:['orange','telekom','o2','internet','elektrina','plyn','voda','spp','zse','energie'],
+  vzdelanie:['skola','kurz','kniha','skolne','krúžok','kruzok'],
+  poistky:['poistka','uniqa','allianz','generali','simplea','poistovna','kooperativa'],
+  deti:['skolka','jasle','plienky','hracky','detsk','krúžok pre deti','materska skola'],
+  podnikanie:['podnikanie','zivnost','szco','firma','faktura','odvody','ucetn','danove priznanie','preddavok'],
+  mzda:['mzda','vyplata','plat']
+};
+
+var ASSET_FIELDS = [
+  {id:'rezervy',emoji:'🛟',label:'Rezervy (hotovosť, sporenie)',debt:false},
+  {id:'investicie',emoji:'📈',label:'Investície (ETF, akcie...)',debt:false},
+  {id:'nehnutelnosti',emoji:'🏠',label:'Nehnuteľnosti',debt:false},
+  {id:'auta',emoji:'🚗',label:'Autá',debt:false},
+  {id:'alternativy',emoji:'🌑',label:'Alternatívy (zlato, krypto...)',debt:false},
+  {id:'uvery',emoji:'💳',label:'Spotrebné úvery (mínus)',debt:true},
+  {id:'hypoteka',emoji:'🏦',label:'Hypotéka (mínus)',debt:true}
+];
+var DEFAULT_RATES = {rezervy:-2,investicie:7,nehnutelnosti:4,auta:-5,alternativy:4,uvery:-20,hypoteka:-8};
+
+var PALETTE = ['#4FA8AE','#E3A857','#C25450','#8E7CC3','#6FA96F','#D98C6B','#7B8FA6','#4A4A4E','#B37FA0','#5A8FBF'];
+
+function defaultState(){
+  return {transactions:[], assets:{}, goals:[], settings:{rates:Object.assign({},DEFAULT_RATES)}, meta:{lastBackup:null, firstUse:null}};
+}
+var state = defaultState(); // naplní sa z úložiska v init() na konci
+
+function deepClone(v){
+  try{ return JSON.parse(JSON.stringify(v)); }catch(e){ return v; }
+}
+function normalizeLoadedState(parsed){
+  // Dáta zvonku (stará online záloha, súbor) môžu prísť ako zamrznutý objekt.
+  // Hlboká kópia zaručí, že state.transactions.push(...) a pod. nikdy nezlyhá.
+  parsed = deepClone(parsed) || {};
+  return {
+    transactions: (parsed && Array.isArray(parsed.transactions)) ? parsed.transactions : [],
+    assets: (parsed && parsed.assets && typeof parsed.assets==='object') ? parsed.assets : {},
+    goals: (parsed && Array.isArray(parsed.goals)) ? parsed.goals : [],
+    settings: {rates: Object.assign({}, DEFAULT_RATES, (parsed && parsed.settings && parsed.settings.rates) || {})},
+    meta: {lastBackup: (parsed && parsed.meta && parsed.meta.lastBackup) || null,
+           firstUse: (parsed && parsed.meta && parsed.meta.firstUse) || null}
+  };
+}
+
+/* Dáta žijú len v tomto zariadení: zapisujeme ich do localStorage aj do IndexedDB
+   (dve nezávislé kópie). Pri načítaní vyhrá novšia z nich. */
+var DB_NAME = 'rodinny_rozpocet', DB_STORE = 'kv';
+var idbPromise = null;
+function idb(){
+  if(!idbPromise){
+    idbPromise = new Promise(function(res, rej){
+      if(!window.indexedDB) return rej(new Error('no indexedDB'));
+      var r = indexedDB.open(DB_NAME, 1);
+      r.onupgradeneeded = function(){ r.result.createObjectStore(DB_STORE); };
+      r.onsuccess = function(){ res(r.result); };
+      r.onerror = function(){ rej(r.error); };
+    }).catch(function(){ idbPromise = null; return null; });
+  }
+  return idbPromise;
+}
+function idbGet(key){
+  return idb().then(function(db){
+    if(!db) return null;
+    return new Promise(function(res){
+      try{
+        var q = db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get(key);
+        q.onsuccess = function(){ res(q.result || null); };
+        q.onerror = function(){ res(null); };
+      }catch(e){ res(null); }
+    });
+  });
+}
+function idbSet(key, val){
+  return idb().then(function(db){
+    if(!db) return;
+    return new Promise(function(res){
+      try{
+        var tx = db.transaction(DB_STORE,'readwrite');
+        tx.objectStore(DB_STORE).put(val, key);
+        tx.oncomplete = res; tx.onerror = res; tx.onabort = res;
+      }catch(e){ res(); }
+    });
+  });
+}
+function readLocal(){
+  try{
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return null;
+    var p = JSON.parse(raw);
+    return (p && p.state) ? p : {savedAt:0, state:p}; // starý formát bez obálky
+  }catch(e){ return null; }
+}
+function loadState(){
+  var local = readLocal();
+  return idbGet(STORAGE_KEY).catch(function(){ return null; }).then(function(fromDb){
+    var pick = local;
+    if(fromDb && fromDb.state && (!pick || (fromDb.savedAt||0) > (pick.savedAt||0))) pick = fromDb;
+    return pick ? normalizeLoadedState(pick.state) : defaultState();
+  });
+}
+function saveState(){
+  if(!state.meta.firstUse) state.meta.firstUse = Date.now();
+  var json = JSON.stringify({savedAt: Date.now(), state: state});
+  try{ localStorage.setItem(STORAGE_KEY, json); }catch(e){}
+  idbSet(STORAGE_KEY, JSON.parse(json)).catch(function(){});
+}
+
+/* ================= UI STATE ================= */
+var today = new Date();
+function pad(n){ return String(n).padStart(2,'0'); }
+function monthKey(y,m){ return y+'-'+pad(m); } // m: 1-12
+
+var ui = {
+  tab:'prehlad',
+  pMonth: today.getMonth()+1, pYear: today.getFullYear(),
+  year: today.getFullYear(),
+  mMonth: today.getMonth()+1, mYear: today.getFullYear(),
+  gMonth: today.getMonth()+1, gYear: today.getFullYear(),
+  txType:'expense',
+  editingGoalId: null,
+  openCat: null // rozbalená kategória v 'Kategórie výdavkov'
+};
+
+var charts = {};
+var userTouched = false;
+document.addEventListener('pointerdown', function(){ userTouched = true; }, {once:true, capture:true});
+document.addEventListener('keydown', function(){ userTouched = true; }, {once:true, capture:true});
+
+/* ================= HELPERS ================= */
+function normalize(s){
+  return (s||'').toLowerCase()
+    .replace(/[áä]/g,'a').replace(/č/g,'c').replace(/ď/g,'d').replace(/[éě]/g,'e')
+    .replace(/í/g,'i').replace(/ľ/g,'l').replace(/ň/g,'n').replace(/[óô]/g,'o')
+    .replace(/[ŕř]/g,'r').replace(/š/g,'s').replace(/ť/g,'t').replace(/[úů]/g,'u')
+    .replace(/ý/g,'y').replace(/ž/g,'z');
+}
+function guessCategory(note, type){
+  var n = normalize(note);
+  if(!n) return null;
+  var list = type==='expense'?EXP_CATS:(type==='income'?INC_CATS:INV_CATS);
+  var order = type==='expense'?Object.keys(KEYWORDS).filter(function(k){return EXP_CATS.some(function(c){return c.id===k;});}):
+              type==='income'?['mzda']:[];
+  for(var i=0;i<order.length;i++){
+    var cat = order[i];
+    var words = KEYWORDS[cat]||[];
+    for(var j=0;j<words.length;j++){
+      if(n.indexOf(words[j])!==-1) return cat;
+    }
+  }
+  return null;
+}
+function catInfo(id,type){
+  var list = type==='expense'?EXP_CATS:(type==='income'?INC_CATS:INV_CATS);
+  for(var i=0;i<list.length;i++) if(list[i].id===id) return list[i];
+  return list[list.length-1];
+}
+function formatEUR(n){
+  n = Math.round((n||0)*100)/100;
+  if(Object.is(n,-0)) n = 0;
+  return n.toLocaleString('sk-SK',{maximumFractionDigits:2}) + ' €';
+}
+function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+
+function getMonthTransactions(mKey){
+  return state.transactions.filter(function(t){
+    return t.monthKey===mKey || (t.recurring && t.monthKey < mKey);
+  });
+}
+function monthTotals(mKey){
+  var list = getMonthTransactions(mKey);
+  var income=0, expense=0, invest=0, byCat={}, byCatInvest={};
+  list.forEach(function(t){
+    var amt = Number(t.amount)||0;
+    if(t.type==='income') income+=amt;
+    else if(t.type==='expense'){ expense+=amt; byCat[t.category]=(byCat[t.category]||0)+amt; }
+    else if(t.type==='invest'){ invest+=amt; byCatInvest[t.category]=(byCatInvest[t.category]||0)+amt; }
+  });
+  return {income:income, expense:expense, invest:invest, byCat:byCat, byCatInvest:byCatInvest, free: income-expense-invest, list:list};
+}
+/* Progres cieľa = pôvodná suma cieľa (g.current) + priradené investície.
+   Neopakovaná investícia sa započíta raz, opakovaná za každý mesiac od svojho
+   začiatku po aktuálny mesiac. Vymazaním záznamu sa progres vráti späť. */
+function monthsBetween(fromKey, toKey){
+  var a = String(fromKey||'').split('-'), b = String(toKey||'').split('-');
+  var n = (Number(b[0])-Number(a[0]))*12 + (Number(b[1])-Number(a[1]));
+  return isNaN(n) ? 0 : n;
+}
+function goalContribution(goalId){
+  var nowKey = monthKey(today.getFullYear(), today.getMonth()+1);
+  var sum = 0;
+  state.transactions.forEach(function(t){
+    if(t.type!=='invest' || !t.goalId || t.goalId!==goalId) return;
+    var times = t.recurring ? Math.max(1, monthsBetween(t.monthKey, nowKey)+1) : 1;
+    sum += (Number(t.amount)||0) * times;
+  });
+  return sum;
+}
+function findGoal(id){
+  for(var i=0;i<state.goals.length;i++) if(state.goals[i].id===id) return state.goals[i];
+  return null;
+}
+
+function yearMonths(y){
+  var arr=[];
+  for(var m=1;m<=12;m++) arr.push(y+'-'+pad(m));
+  return arr;
+}
+
+/* ================= RENDER SHELL ================= */
+function switchTab(tab){
+  ui.tab = tab;
+  document.querySelectorAll('.tabbtn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.tab===tab);
+  });
+  render();
+}
+function showDebugError(err){
+  try{
+    var msg = (err && err.message) ? err.message : String(err);
+    var stack = (err && err.stack) ? (' | ' + err.stack.split('\n').slice(0,2).join(' > ')) : '';
+    showToast('Chyba: ' + (msg+stack).slice(0,160));
+  }catch(e){}
+}
+window.addEventListener('error', function(e){
+  showDebugError(e.error || e.message);
+});
+window.addEventListener('unhandledrejection', function(e){
+  showDebugError(e.reason);
+});
+function render(){
+  try{
+    var el = document.getElementById('content');
+    Object.keys(charts).forEach(function(k){ if(charts[k]){charts[k].destroy(); delete charts[k];} });
+    if(ui.tab==='prehlad') el.innerHTML = renderPrehlad();
+    else if(ui.tab==='rok') el.innerHTML = renderRok();
+    else if(ui.tab==='majetok') el.innerHTML = renderMajetok();
+    else if(ui.tab==='ciele') el.innerHTML = renderCiele();
+    else el.innerHTML = renderNavod();
+    afterRender();
+  }catch(err){ showDebugError(err); }
+}
+
+/* ================= PREHĽAD ================= */
+function renderPrehlad(){
+  var mKey = monthKey(ui.pYear, ui.pMonth);
+  var tot = monthTotals(mKey);
+
+  var typeCats = ui.txType==='expense'?EXP_CATS:(ui.txType==='income'?INC_CATS:INV_CATS);
+  var catOptions = typeCats.map(function(c){ return '<option value="'+c.id+'">'+c.emoji+' '+c.label+'</option>'; }).join('');
+
+  var txRows = tot.list.slice().reverse().map(function(t){
+    var info = catInfo(t.category, t.type);
+    var cls = t.type==='expense'?'exp':(t.type==='income'?'inc':'inv');
+    var sign = t.type==='expense'?'-':(t.type==='income'?'+':'');
+    var isFuture = t.monthKey < mKey;
+    return '<div class="txrow" data-txid="'+t.id+'">'+
+      '<div class="ico">'+info.emoji+'</div>'+
+      '<div class="mid"><div class="cat">'+info.label+(t.recurring?'<span class="tag-rec">opakované</span>':'')+
+      (t.type==='invest' && t.goalId && findGoal(t.goalId) ? '<span class="tag-rec">🎯 '+escapeHtml(findGoal(t.goalId).name)+'</span>' : '')+'</div>'+
+      (t.note?'<div class="note">'+escapeHtml(t.note)+'</div>':'')+'</div>'+
+      '<div class="amt '+cls+'">'+sign+formatEUR(t.amount)+'</div>'+
+      '<button class="del" data-action="del-tx" data-id="'+t.id+'" title="Vymazať">✕</button>'+
+      '</div>';
+  }).join('');
+
+  var catRows = Object.keys(tot.byCat).sort(function(a,b){return tot.byCat[b]-tot.byCat[a];}).map(function(cid){
+    var info = catInfo(cid,'expense');
+    var open = ui.openCat===cid;
+    var items = '';
+    if(open){
+      items = '<div class="catlist">'+tot.list.filter(function(t){ return t.type==='expense' && t.category===cid; })
+        .sort(function(a,b){ return (Number(a.day)||0)-(Number(b.day)||0); })
+        .map(function(t){
+          return '<div class="catitem">'+
+            '<span class="cday">'+(t.day ? t.day+'. '+ui.pMonth+'.' : '—')+'</span>'+
+            '<span class="cnote">'+(t.note ? escapeHtml(t.note) : '<span style="color:var(--muted)">bez poznámky</span>')+
+              (t.recurring?'<span class="tag-rec">opakované</span>':'')+'</span>'+
+            '<span class="camt">'+formatEUR(t.amount)+'</span>'+
+          '</div>';
+        }).join('')+'</div>';
+    }
+    return '<div class="insight cattoggle'+(open?' open':'')+'" role="button" tabindex="0" aria-expanded="'+open+'" data-action="toggle-cat" data-cat="'+cid+'">'+
+      '<div class="dot"></div><div>'+info.emoji+' '+info.label+' — '+formatEUR(tot.byCat[cid])+' ('+Math.round(tot.byCat[cid]/(tot.expense||1)*100)+' %)</div>'+
+      '<span class="caret">'+(open?'▾':'▸')+'</span></div>'+items;
+  }).join('') || '<div class="empty">Zapíš výdavky a uvidíš rozdelenie.</div>';
+
+  var prevKey = monthKey(ui.pMonth===1?ui.pYear-1:ui.pYear, ui.pMonth===1?12:ui.pMonth-1);
+  var prevTot = monthTotals(prevKey);
+
+  var g1 = BAND_SPOTREBA.reduce(function(s,c){return s+(tot.byCat[c]||0);},0);
+  var g2 = tot.byCat['byvanie']||0;
+  var g3 = (tot.byCat['deti']||0) + (tot.byCatInvest['etf']||0);
+  var g4 = (tot.byCat['poistky']||0) + (tot.byCatInvest['sporenie']||0);
+  var planG1 = tot.income*0.4, planG2 = tot.income*0.3, planG3 = tot.income*0.2, planG4 = tot.income*0.1;
+
+  var insights = buildPrehladInsights(tot, prevTot);
+
+  return ''+
+  bannersHtml()+
+  '<div class="monthnav">'+
+    '<button data-action="pmonth-prev">‹</button>'+
+    '<div class="label">'+MONTHS[ui.pMonth-1]+' '+ui.pYear+'</div>'+
+    '<button data-action="pmonth-next">›</button>'+
+  '</div>'+
+
+  '<div class="grid2">'+
+    tile('PRÍJMY', formatEUR(tot.income))+
+    tile('VÝDAVKY', formatEUR(tot.expense))+
+    tile('INVESTÍCIE + SPORENIE', formatEUR(tot.invest))+
+    tileAccent('VOĽNÉ PROSTRIEDKY', formatEUR(tot.free), tot.free>=0?'môžeš doinvestovať':'míňaš viac než zarábaš')+
+  '</div>'+
+
+  '<div class="card">'+
+    '<div class="card-head"><h2>Zapísať pohyb</h2><span class="hint">'+MONTHS[ui.pMonth-1]+' '+ui.pYear+'</span></div>'+
+    '<div class="seg" id="typeSeg">'+
+      '<button class="'+(ui.txType==='expense'?'active exp':'')+'" data-type="expense">− Výdavok</button>'+
+      '<button class="'+(ui.txType==='income'?'active inc':'')+'" data-type="income">+ Príjem</button>'+
+      '<button class="'+(ui.txType==='invest'?'active inv':'')+'" data-type="invest">◆ Investícia</button>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div><label>Suma €</label><input type="number" id="txAmount" placeholder="0" min="0" step="0.01"></div>'+
+      '<div><label>Kategória</label><select id="txCategory">'+catOptions+'</select></div>'+
+    '</div>'+
+    '<label>Poznámka (napíš napr. Lidl, Netflix, nájom — kategóriu skúsim uhádnuť)</label>'+
+    '<input type="text" id="txNote" placeholder="napr. Lidl týždenný nákup">'+
+    (ui.txType==='invest' && state.goals.length ?
+      '<label>Priradiť k cieľu (voliteľné)</label>'+
+      '<select id="txGoal"><option value="">— nepriradiť —</option>'+
+        state.goals.map(function(g){ return '<option value="'+g.id+'">'+(g.type==='debt'?'💳 ':'💰 ')+escapeHtml(g.name)+'</option>'; }).join('')+
+      '</select>' : '')+
+    '<label class="checkline" style="margin-top:12px;"><input type="checkbox" id="txRecurring"> opakuje sa každý mesiac</label>'+
+    '<button class="btn-primary" data-action="add-tx">Pridať</button>'+
+  '</div>'+
+
+  '<div class="card">'+
+    '<div class="card-head"><h2>Pohyby v mesiaci</h2><span class="hint">'+tot.list.length+' pohybov</span></div>'+
+    (txRows || '<div class="empty">Zatiaľ žiadne pohyby — zapíš prvý vyššie ↑</div>')+
+  '</div>'+
+
+  '<div class="card">'+
+    '<div class="card-head"><h2>Kategórie výdavkov</h2><span class="hint">tento mesiac</span></div>'+
+    catRows+
+  '</div>'+
+
+  '<div class="card">'+
+    '<h2>Pravidlo rozpočtu</h2><div class="sub">40 spotreba a ochrana majetku / 30 bývanie / 20 renta a budúcnosť · deti / 10 ochrana príjmov a rezerva</div>'+
+    ruleBar('Spotreba a ochrana majetku', g1, planG1)+
+    ruleBar('Bývanie', g2, planG2)+
+    ruleBar('Renta a budúcnosť / deti', g3, planG3)+
+    ruleBar('Ochrana príjmov a rezerva', g4, planG4)+
+    '<div class="rulenote">Spotreba = doprava, potraviny, zábava, oblečenie, zdravie, komunikácia, vzdelanie, podnikanie, ostatné. Bývanie = kategória Bývanie. Renta a budúcnosť/deti = investície ETF + kategória Deti. Ochrana príjmov a rezerva = poistky + sporenie.</div>'+
+  '</div>'+
+
+  '<div class="card">'+
+    '<div class="card-head"><h2>Rozdelenie výdavkov</h2><span class="hint">tento mesiac</span></div>'+
+    (tot.expense>0 ? '<div class="chartwrap"><canvas id="pieExpenses"></canvas></div>' : '<div class="empty">Zapíš výdavky a uvidíš koláčový graf.</div>')+
+  '</div>'+
+
+  '<div class="card">'+
+    '<div class="card-head"><h2>Postrehy</h2><span class="hint">automaticky</span></div>'+
+    insights+
+  '</div>';
+}
+
+// Appka beží buď samostatne (vlastná webová adresa, pridaná na plochu), alebo vložená v inej stránke (napr. claude.ai).
+var isEmbedded = (function(){ try{ return window.self!==window.top; }catch(e){ return true; } })();
+var isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone===true;
+var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+function flagGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function flagSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function bannersHtml(){
+  var out = '';
+  if(isMobile && !isStandalone && !isEmbedded && !flagGet('rr_install_dismissed')){
+    out += '<div class="card banner"><h2>📲 Pridaj si appku na plochu</h2>'+
+      '<p>'+(isIOS
+        ? 'V Safari ťukni dole na <b>Zdieľať</b> (štvorček so šípkou) → <b>Pridať na plochu</b>. Appka sa potom otvára ako bežná aplikácia, funguje bez internetu a iOS tvoje dáta spoľahlivo uchová.'
+        : 'V menu prehliadača (⋮) zvoľ <b>Inštalovať aplikáciu</b> alebo <b>Pridať na plochu</b>. Appka potom funguje aj bez internetu.')+'</p>'+
+      '<div class="btns"><a class="btn-ghost" href="navod.html" style="text-decoration:none;">Podrobný návod</a>'+
+      '<button class="btn-ghost" data-action="dismiss-install">Rozumiem</button></div></div>';
+  }
+  var hasData = state.transactions.length>0 || state.goals.length>0 || Object.keys(state.assets).length>0;
+  var last = state.meta && state.meta.lastBackup;
+  var days = last ? Math.floor((Date.now()-last)/86400000) : null;
+  var usedDays = state.meta && state.meta.firstUse ? Math.floor((Date.now()-state.meta.firstUse)/86400000) : 0;
+  var due = days===null ? usedDays>=7 : days>=30;
+  if(hasData && due && flagGet('rr_backup_snooze')!==new Date().toISOString().slice(0,10)){
+    out += '<div class="card banner"><h2>💾 Čas na zálohu</h2>'+
+      '<p>'+(days===null ? 'Zatiaľ si si dáta nezálohoval/a.' : 'Posledná záloha bola pred '+days+' dňami.')+
+      ' Dáta sú uložené len v tomto zariadení — ak ho stratíš alebo appku vymažeš, záloha je jediná kópia.</p>'+
+      '<div class="btns"><button class="btn-primary" data-action="backup">Zálohovať teraz</button>'+
+      '<button class="btn-ghost" data-action="snooze-backup">Neskôr</button></div></div>';
+  }
+  return out;
+}
+
+function buildPrehladInsights(tot, prevTot){
+  var out = [];
+  if(tot.income===0 && tot.expense===0 && tot.invest===0){
+    return '<div class="empty">Zapíš pár pohybov a poviem ti, čo v čísleach vidím.</div>';
+  }
+  if(tot.expense>0 && prevTot.expense>0){
+    var diff = tot.expense - prevTot.expense;
+    if(Math.abs(diff)>1){
+      out.push((diff>0?'Tento mesiac míňaš o '+formatEUR(Math.abs(diff))+' viac':'Tento mesiac míňaš o '+formatEUR(Math.abs(diff))+' menej')+' než minulý mesiac.');
+    }
+  }
+  var topCat=null, topVal=0;
+  Object.keys(tot.byCat).forEach(function(c){ if(tot.byCat[c]>topVal){topVal=tot.byCat[c]; topCat=c;} });
+  if(topCat){
+    var info = catInfo(topCat,'expense');
+    out.push('Najviac míňaš na '+info.label.toLowerCase()+' — '+formatEUR(topVal)+' ('+Math.round(topVal/tot.expense*100)+' % výdavkov).');
+  }
+  if(tot.income>0){
+    var rate = tot.invest/tot.income*100;
+    if(rate<20) out.push('Miera úspor je '+Math.round(rate)+' %. Cieľ je 20 %+ — skús nájsť priestor v kategórii „chcem".');
+    else out.push('Miera úspor je '+Math.round(rate)+' % — nad odporúčaným cieľom 20 %, pekná práca.');
+  }
+  if(tot.free<0) out.push('Tento mesiac míňaš viac než zarábaš o '+formatEUR(Math.abs(tot.free))+'.');
+  if(out.length===0) return '<div class="empty">Zatiaľ nemám dosť dát na postrehy.</div>';
+  return out.map(function(t){return '<div class="insight"><div class="dot"></div><div>'+t+'</div></div>';}).join('');
+}
+
+function tile(lbl,val){
+  return '<div class="tile"><div class="lbl">'+lbl+'</div><div class="val">'+val+'</div></div>';
+}
+function tileAccent(lbl,val,foot){
+  return '<div class="tile accent"><div class="lbl">'+lbl+'</div><div class="val">'+val+'</div><div class="foot">'+foot+'</div></div>';
+}
+function ruleBar(label, actual, plan){
+  var pct = plan>0 ? Math.min(100, actual/plan*100) : (actual>0?100:0);
+  var over = plan>0 && actual>plan;
+  return '<div class="rulebar">'+
+    '<div class="rh"><span>'+label+'</span><b>'+formatEUR(actual)+' / plán '+formatEUR(plan)+'</b></div>'+
+    '<div class="barbg"><div class="barfg'+(over?' over':'')+'" style="width:'+pct+'%"></div></div>'+
+  '</div>';
+}
+function escapeHtml(s){
+  var d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+}
+
+/* ================= ROK ================= */
+function renderRok(){
+  var months = yearMonths(ui.year);
+  var incArr=[], expArr=[], invArr=[];
+  var yearIncome=0, yearExpense=0, yearInvest=0;
+  var byCatYear = {};
+  months.forEach(function(mk){
+    var t = monthTotals(mk);
+    incArr.push(t.income); expArr.push(t.expense); invArr.push(t.invest);
+    yearIncome+=t.income; yearExpense+=t.expense; yearInvest+=t.invest;
+    Object.keys(t.byCat).forEach(function(c){ byCatYear[c]=(byCatYear[c]||0)+t.byCat[c]; });
+  });
+  var savingsRate = yearIncome>0 ? Math.round(yearInvest/yearIncome*100) : 0;
+
+  var topCats = Object.keys(byCatYear).sort(function(a,b){return byCatYear[b]-byCatYear[a];}).slice(0,6);
+  var topCatsHtml = topCats.map(function(c){
+    var info = catInfo(c,'expense');
+    return '<div class="insight"><div class="dot"></div><div>'+info.emoji+' '+info.label+' — '+formatEUR(byCatYear[c])+' ('+Math.round(byCatYear[c]/(yearExpense||1)*100)+' %)</div></div>';
+  }).join('') || '<div class="empty">Žiadne výdavky v roku '+ui.year+'.</div>';
+
+  var insights = buildRokInsights(yearIncome, yearExpense, yearInvest, incArr, expArr);
+
+  return ''+
+  '<div class="monthnav">'+
+    '<button data-action="year-prev">‹</button>'+
+    '<div class="label">'+ui.year+'</div>'+
+    '<button data-action="year-next">›</button>'+
+  '</div>'+
+
+  '<div class="grid2">'+
+    tile('PRÍJMY ZA ROK', formatEUR(yearIncome))+
+    tile('VÝDAVKY ZA ROK', formatEUR(yearExpense))+
+    tile('INVESTOVANÉ + NAŠETRENÉ', formatEUR(yearInvest))+
+    tileAccent('MIERA ÚSPOR', savingsRate+' %', 'cieľ: 20 %+')+
+  '</div>'+
+
+  '<div class="card">'+
+    '<div class="card-head"><h2>Mesiac po mesiaci</h2><span class="hint">príjmy · výdavky · úspory</span></div>'+
+    '<div class="chartwrap"><canvas id="yearChart"></canvas></div>'+
+  '</div>'+
+
+  '<div class="card">'+
+    '<div class="card-head"><h2>Top kategórie roka</h2><span class="hint">'+topCats.length+' kategórií</span></div>'+
+    topCatsHtml+
+  '</div>'+
+
+  (yearExpense>0 ? '<div class="card"><div class="card-head"><h2>Rozdelenie výdavkov za rok</h2><span class="hint">'+ui.year+'</span></div><div class="chartwrap"><canvas id="pieYear"></canvas></div></div>' : '')+
+
+  '<div class="card">'+
+    '<div class="card-head"><h2>Čo s tým spraví čas</h2><span class="hint">tvoje ročné úspory v ETF</span></div>'+
+    (yearInvest>0 ? projectionBlock(yearInvest) : '<div class="empty">Zapíš investície/sporenie a ukážem ti, čo z nich čas spraví.</div>')+
+  '</div>'+
+
+  '<div class="card">'+
+    '<div class="card-head"><h2>Postrehy za rok</h2><span class="hint">automaticky</span></div>'+
+    insights+
+  '</div>';
+}
+function projectionBlock(annualInvest){
+  var rate = 0.07;
+  var v10 = annualInvest * (Math.pow(1+rate,10)-1)/rate;
+  var v20 = annualInvest * (Math.pow(1+rate,20)-1)/rate;
+  return '<div class="sub" style="margin-bottom:12px;">pri odhadovanom výnose 7 % ročne (ETF), ak by si takto investoval/a každý rok</div>'+
+   '<div class="grid2" style="margin-bottom:0;">'+
+     tile('O 10 ROKOV', formatEUR(v10))+
+     tile('O 20 ROKOV', formatEUR(v20))+
+   '</div>';
+}
+function buildRokInsights(income, expense, invest, incArr, expArr){
+  var out=[];
+  if(income===0 && expense===0 && invest===0) return '<div class="empty">Zapíš pár mesiacov a poviem ti, čo v roku vidím.</div>';
+  var bestIdx=-1,bestVal=-Infinity,worstIdx=-1,worstVal=Infinity;
+  for(var i=0;i<12;i++){
+    var net = incArr[i]-expArr[i];
+    if(incArr[i]===0 && expArr[i]===0) continue;
+    if(net>bestVal){bestVal=net; bestIdx=i;}
+    if(net<worstVal){worstVal=net; worstIdx=i;}
+  }
+  if(bestIdx!==-1) out.push('Najsilnejší mesiac bol '+MONTHS[bestIdx]+' — voľné prostriedky '+formatEUR(bestVal)+'.');
+  if(worstIdx!==-1 && worstIdx!==bestIdx) out.push('Najnáročnejší mesiac bol '+MONTHS[worstIdx]+' — voľné prostriedky '+formatEUR(worstVal)+'.');
+  if(income>0){
+    var rate = Math.round(invest/income*100);
+    out.push('Za celý rok si odložil/a '+rate+' % z príjmu.');
+  }
+  return out.map(function(t){return '<div class="insight"><div class="dot"></div><div>'+t+'</div></div>';}).join('');
+}
+
+/* ================= MAJETOK ================= */
+function assetsFor(mKey){
+  var a = state.assets[mKey] || {};
+  var out = {};
+  ASSET_FIELDS.forEach(function(f){ out[f.id] = Number(a[f.id])||0; });
+  return out;
+}
+function renderMajetok(){
+  var mKey = monthKey(ui.mYear, ui.mMonth);
+  var a = assetsFor(mKey);
+  var assetsTotal = a.rezervy+a.investicie+a.nehnutelnosti+a.auta+a.alternativy;
+  var debtTotal = a.uvery+a.hypoteka;
+  var net = assetsTotal - debtTotal;
+
+  var inputs = ASSET_FIELDS.map(function(f){
+    return '<div class="assetrow"><div class="al">'+f.emoji+' '+f.label+'</div>'+
+    '<input type="number" min="0" step="10" data-asset="'+f.id+'" value="'+(a[f.id]||'')+'" placeholder="0"></div>';
+  }).join('');
+
+  var hasAny = assetsTotal>0 || debtTotal>0;
+
+  var tips = buildMajetokTips(a, assetsTotal, debtTotal);
+
+  return ''+
+  '<div class="monthnav">'+
+    '<button data-action="mmonth-prev">‹</button>'+
+    '<div class="label">'+MONTHS[ui.mMonth-1]+' '+ui.mYear+'</div>'+
+    '<button data-action="mmonth-next">›</button>'+
+  '</div>'+
+
+  '<div class="card">'+
+    '<div class="card-head"><h2>Čistý majetok</h2><span class="hint">zapíš aktuálne zostatky — prepočíta sa sám</span></div>'+
+    inputs+
+  '</div>'+
+
+  '<div class="tile accent" style="margin-bottom:14px;"><div class="lbl">ČISTÝ MAJETOK</div><div class="val">'+formatEUR(net)+'</div><div class="foot">aktíva − úvery</div></div>'+
+
+  '<div class="card">'+
+    '<div class="card-head"><h2>Rozloženie majetku</h2><span class="hint">kde ti ležia peniaze</span></div>'+
+    (assetsTotal>0 ? '<div class="chartwrap"><canvas id="pieAssets"></canvas></div>' : '<div class="empty">Zapíš zostatky vyššie a uvidíš rozloženie.</div>')+
+  '</div>'+
+
+  '<div class="card">'+
+    '<div class="card-head"><h2>Predikcia vývoja</h2><span class="hint">na 10 rokov</span></div>'+
+    (hasAny ? '<div class="chartwrap tall"><canvas id="projChart"></canvas></div><div class="sub" style="margin-top:10px;">Ročné miery zmeny si vieš upraviť v ⚙️ Nastavenia.</div>' : '<div class="empty">Zapíš zostatky a uvidíš vývoj na 10 rokov.</div>')+
+  '</div>'+
+
+  '<div class="card">'+
+    '<div class="card-head"><h2>Tipy a odporúčania</h2><span class="hint">z tvojich čísel</span></div>'+
+    tips+
+  '</div>';
+}
+function buildMajetokTips(a, assetsTotal, debtTotal){
+  if(assetsTotal===0 && debtTotal===0) return '<div class="empty">Zapíš zostatky a dostaneš konkrétne odporúčania.</div>';
+  var out=[];
+  if(assetsTotal>0){
+    var cashShare = a.rezervy/assetsTotal;
+    if(cashShare>0.4) out.push('Máš '+Math.round(cashShare*100)+' % majetku v hotovosti a rezervách. Nad rámec 3–6 mesačných výdavkov zváž presun do investícií.');
+    var investShare = a.investicie/assetsTotal;
+    if(investShare<0.15 && a.rezervy>0) out.push('Investície tvoria len '+Math.round(investShare*100)+' % majetku — pri dlhodobom horizonte zváž pravidelné investovanie.');
+  }
+  if(assetsTotal>0 && debtTotal/ (assetsTotal) > 0.5) out.push('Úvery tvoria viac než polovicu tvojho majetku. Prioritou by malo byť ich postupné znižovanie.');
+  if(a.rezervy===0 && assetsTotal>0) out.push('Nemáš zapísanú žiadnu rezervu — odporúča sa mať aspoň 3–6 mesačných výdavkov nabok.');
+  if(out.length===0) out.push('Rozloženie majetku vyzerá vyvážene — pokračuj v pravidelnom sledovaní.');
+  return out.map(function(t){return '<div class="insight"><div class="dot"></div><div>'+t+'</div></div>';}).join('');
+}
+
+/* ================= CIELE ================= */
+function renderCiele(){
+  var mKey = monthKey(ui.gYear, ui.gMonth);
+  var goalRows = state.goals.slice().reverse().map(function(g){
+    var contrib = goalContribution(g.id);
+    var progress = (Number(g.current)||0) + contrib;
+    var pct = g.target>0 ? Math.min(100, progress/g.target*100) : 0;
+    var remaining = Math.max(0, g.target-progress);
+    var horizonTxt='';
+    if(g.month && g.year){
+      var monthsLeft = (Number(g.year)-today.getFullYear())*12 + (Number(g.month)-(today.getMonth()+1));
+      var yrs = monthsLeft/12;
+      var rate = yrs<1?'0 %':(yrs<=5?'~3 %':'~8 %');
+      horizonTxt = '<div class="horizon">odporúčaný výnos podľa horizontu: '+rate+'</div>';
+    }
+    var editing = ui.editingGoalId === g.id;
+    return '<div class="goal">'+
+      '<div class="goal-head"><div><div class="name">'+escapeHtml(g.name)+'</div>'+
+      '<div class="type">'+(g.type==='debt'?'💳 Splatiť dlh':'💰 Našetriť')+(g.month&&g.year?' · do '+pad(g.month)+'/'+g.year:'')+'</div></div>'+
+      '<div style="display:flex;gap:6px;flex:none;">'+
+        '<button class="btn-ghost" style="padding:5px 9px;font-size:12px;" data-action="toggle-edit-goal" data-id="'+g.id+'">✏️'+(editing?' Zavrieť':' Upraviť')+'</button>'+
+        '<button class="del" data-action="del-goal" data-id="'+g.id+'">✕</button>'+
+      '</div></div>'+
+      '<div class="barbg"><div class="barfg" style="width:'+pct+'%"></div></div>'+
+      '<div class="figs"><span>'+formatEUR(progress)+' / '+formatEUR(g.target)+'</span><span>zostáva '+formatEUR(remaining)+'</span></div>'+
+      (contrib>0 ? '<div class="figs"><span>z toho z priradených investícií '+formatEUR(contrib)+'</span></div>' : '')+
+      (editing ?
+        '<div class="row" style="margin-top:10px;align-items:flex-end;">'+
+          '<div style="flex:1;"><label style="margin-top:0;">'+(g.type==='debt'?'Nové splatené €':'Nové nasporené €')+'</label>'+
+          '<input type="number" min="0" step="1" id="editGoalAmount" value="'+g.current+'"></div>'+
+          '<button class="btn-primary" style="width:auto;margin-top:0;padding:11px 16px;flex:none;" data-action="save-goal-amount" data-id="'+g.id+'">Uložiť</button>'+
+        '</div>'+
+        (contrib>0 ? '<div class="figs"><span>Upravuješ sumu bez priradených investícií — tie ('+formatEUR(contrib)+') sa pripočítajú automaticky.</span></div>' : '')
+        : '')+
+      horizonTxt+
+    '</div>';
+  }).join('') || '<div class="empty">🎯<br><br>Zatiaľ žiadne ciele.<br>Pridaj prvý — napríklad rezervu, splatenie úveru alebo investičný byt.</div>';
+
+  return ''+
+  '<div class="card">'+
+    '<div class="card-head"><h2>Nový cieľ</h2><span class="hint">splatiť úver, byt, rezerva, dovolenka...</span></div>'+
+    '<label>Názov cieľa</label>'+
+    '<input type="text" id="goalName" placeholder="napr. Investičný byt">'+
+    '<label>Typ cieľa</label>'+
+    '<div class="seg" id="goalTypeSeg">'+
+      '<button class="active inc" data-gtype="save">💰 Našetriť</button>'+
+      '<button data-gtype="debt">💳 Splatiť dlh</button>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div><label>Cieľová suma €</label><input type="number" id="goalTarget" placeholder="20000" min="0"></div>'+
+      '<div><label>Už mám / splatené €</label><input type="number" id="goalCurrent" placeholder="0" min="0"></div>'+
+    '</div>'+
+    '<label>Termín (voliteľné)</label>'+
+    '<div class="row">'+
+      '<select id="goalMonth"><option value="">— mesiac —</option>'+MONTHS.map(function(m,i){return '<option value="'+(i+1)+'">'+m+'</option>';}).join('')+'</select>'+
+      '<select id="goalYear"><option value="">— rok —</option>'+yearOptions()+'</select>'+
+    '</div>'+
+    '<button class="btn-primary" data-action="add-goal">Pridať cieľ →</button>'+
+  '</div>'+
+
+  '<div class="card">'+goalRows+'</div>'+
+
+  '<div class="card">'+
+    '<div class="card-head"><h2>Ako počítam výnos</h2><span class="hint">podľa horizontu cieľa</span></div>'+
+    '<div class="hz"><div class="ht">Do 1 roka · 0 %</div><div class="hd">Krátke ciele patria do hotovosti — trh na nich nemá čas pracovať.</div></div>'+
+    '<div class="hz"><div class="ht">1–5 rokov · 3 %</div><div class="hd">Konzervatívne nástroje pre strednodobé ciele.</div></div>'+
+    '<div class="hz"><div class="ht">Nad 5 rokov · 8 %</div><div class="hd">Dlhý horizont znesie akciové portfólio a jeho výkyvy.</div></div>'+
+  '</div>';
+}
+function yearOptions(){
+  var out='';
+  for(var y=today.getFullYear();y<=today.getFullYear()+25;y++) out += '<option value="'+y+'">'+y+'</option>';
+  return out;
+}
+
+/* ================= NÁVOD ================= */
+function renderNavod(){
+  return '<div class="card"><h2 style="margin-bottom:6px;">Ako appku používať</h2>'+
+  '<p style="margin:0 0 16px;font-size:13.5px;"><a href="navod.html">📲 Návod na pridanie na plochu (iPhone, Android, počítač)</a></p>'+
+  '<ol class="steps">'+
+    '<li><b>Zapíš pravidelné pohyby</b><p>V záložke Prehľad pridávaj výdavky, príjmy a investície za aktuálny mesiac. Do poznámky napíš napr. „Lidl" alebo „nájom" — kategóriu ti skúsim sám odhadnúť.</p></li>'+
+    '<li><b>Označ opakované položky</b><p>Výplatu, nájom alebo pravidelné sporenie začiarkni ako „opakuje sa každý mesiac" — appka ich potom automaticky ráta aj v ďalších mesiacoch.</p></li>'+
+    '<li><b>Sleduj pravidlo 40/30/20/10</b><p>Na Prehľade uvidíš, ako sa tvoje výdavky delia na spotrebu, bývanie, rentu/budúcnosť a ochranu príjmov — a koláčový graf ti ukáže presné rozdelenie.</p></li>'+
+    '<li><b>Raz za čas doplň Majetok</b><p>Zapíš aktuálne zostatky účtov, investícií a úverov. Appka spočíta čistý majetok a ukáže predikciu na 10 rokov dopredu.</p></li>'+
+    '<li><b>Nastav si ciele</b><p>V záložke Ciele si pridaj konkrétny cieľ (rezerva, byt, splatenie úveru) a appka ti ukáže priebeh aj odporúčaný spôsob investovania podľa horizontu.</p></li>'+
+    '<li><b>Pridaj si appku na plochu</b><p>Na iPhone otvor stránku v Safari, ťukni na Zdieľať → „Pridať na plochu". Na Androide v Chrome zvoľ v menu „Inštalovať aplikáciu". Appka potom funguje aj bez internetu.</p></li>'+
+    '<li><b>Zálohuj si dáta</b><p>Všetko sa ukladá len v tvojom telefóne — nikto iný k dátam nemá prístup, ale ani my ich nevieme obnoviť. Občas použi „Záloha" v hornom menu a súbor si ulož (napr. do Súborov / iCloud Drive). Cez „Obnoviť" ho vieš kedykoľvek nahrať späť, aj do nového telefónu.</p></li>'+
+  '</ol></div>';
+}
+
+/* ================= AFTER RENDER: charts + listeners ================= */
+function afterRender(){
+  if(ui.tab==='prehlad'){
+    var mKey = monthKey(ui.pYear, ui.pMonth);
+    var tot = monthTotals(mKey);
+    if(tot.expense>0){
+      var labels=[], data=[], colors=[];
+      Object.keys(tot.byCat).sort(function(a,b){return tot.byCat[b]-tot.byCat[a];}).forEach(function(c,i){
+        var info = catInfo(c,'expense');
+        labels.push(info.emoji+' '+info.label); data.push(tot.byCat[c]); colors.push(PALETTE[i%PALETTE.length]);
+      });
+      makePie('pieExpenses', labels, data, colors);
+    }
+    var sel = document.getElementById('txCategory');
+    if(sel) sel.dataset.touched = 'false';
+  }
+  if(ui.tab==='rok'){
+    var months = yearMonths(ui.year);
+    var incArr=[], expArr=[], invArr=[], byCatYear={}, yearExpense=0;
+    months.forEach(function(mk){
+      var t = monthTotals(mk);
+      incArr.push(t.income); expArr.push(t.expense); invArr.push(t.invest);
+      Object.keys(t.byCat).forEach(function(c){ byCatYear[c]=(byCatYear[c]||0)+t.byCat[c]; });
+      yearExpense += t.expense;
+    });
+    makeLineBar('yearChart', months.map(function(mk){return MONTHS[Number(mk.split('-')[1])-1].slice(0,3);}), incArr, expArr, invArr);
+    if(yearExpense>0){
+      var labels=[], data=[], colors=[];
+      Object.keys(byCatYear).sort(function(a,b){return byCatYear[b]-byCatYear[a];}).forEach(function(c,i){
+        var info = catInfo(c,'expense');
+        labels.push(info.emoji+' '+info.label); data.push(byCatYear[c]); colors.push(PALETTE[i%PALETTE.length]);
+      });
+      makePie('pieYear', labels, data, colors);
+    }
+  }
+  if(ui.tab==='majetok'){
+    var mKey2 = monthKey(ui.mYear, ui.mMonth);
+    var a = assetsFor(mKey2);
+    var assetsTotal = a.rezervy+a.investicie+a.nehnutelnosti+a.auta+a.alternativy;
+    if(assetsTotal>0){
+      var fields = ASSET_FIELDS.filter(function(f){return !f.debt && a[f.id]>0;});
+      makePie('pieAssets', fields.map(function(f){return f.emoji+' '+f.label;}), fields.map(function(f){return a[f.id];}),
+        fields.map(function(f,i){return PALETTE[i%PALETTE.length];}));
+    }
+    var hasAny = assetsTotal>0 || (a.uvery+a.hypoteka)>0;
+    if(hasAny) makeProjection('projChart', a);
+  }
+  attachListeners();
+}
+
+function makePie(canvasId, labels, data, colors){
+  var ctx = document.getElementById(canvasId);
+  if(!ctx || typeof Chart==='undefined') return;
+  charts[canvasId] = new Chart(ctx, {
+    type:'doughnut',
+    data:{labels:labels, datasets:[{data:data, backgroundColor:colors, borderWidth:2, borderColor:getVar('--card')}]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom', labels:{color:getVar('--text'), font:{family:'Inter'}, boxWidth:11, padding:12}},
+      tooltip:{callbacks:{label:function(c){ return c.label+': '+formatEUR(c.parsed); }}}}
+    }
+  });
+}
+function makeLineBar(canvasId, labels, inc, exp, inv){
+  var ctx = document.getElementById(canvasId);
+  if(!ctx || typeof Chart==='undefined') return;
+  charts[canvasId] = new Chart(ctx, {
+    type:'bar',
+    data:{labels:labels, datasets:[
+      {label:'Príjmy', data:inc, backgroundColor:'#4FA8AE'},
+      {label:'Výdavky', data:exp, backgroundColor:'#C25450'},
+      {label:'Investície + sporenie', data:inv, backgroundColor:'#E3A857'}
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        x:{ticks:{color:getVar('--muted'),font:{size:10}}, grid:{display:false}},
+        y:{ticks:{color:getVar('--muted'),font:{size:10}}, grid:{color:getVar('--border')}}
+      },
+      plugins:{legend:{position:'bottom', labels:{color:getVar('--text'), font:{family:'Inter'}, boxWidth:11, padding:10}}}
+    }
+  });
+}
+function makeProjection(canvasId, a){
+  var ctx = document.getElementById(canvasId);
+  if(!ctx || typeof Chart==='undefined') return;
+  var rates = state.settings.rates;
+  var years = []; for(var y=0;y<=10;y++) years.push('rok '+y);
+  var netArr = [];
+  for(var t=0;t<=10;t++){
+    var sum=0;
+    ASSET_FIELDS.forEach(function(f){
+      var base = Number(a[f.id])||0;
+      var r = (Number(rates[f.id])||0)/100;
+      var val = base*Math.pow(1+r, t);
+      if(f.debt) val = Math.max(0,val);
+      sum += f.debt ? -val : val;
+    });
+    netArr.push(Math.round(sum));
+  }
+  charts[canvasId] = new Chart(ctx, {
+    type:'line',
+    data:{labels:years, datasets:[{label:'Čistý majetok', data:netArr, borderColor:'#4FA8AE', backgroundColor:'rgba(79,168,174,.15)', fill:true, tension:.3, pointRadius:3}]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        x:{ticks:{color:getVar('--muted'),font:{size:10}}, grid:{display:false}},
+        y:{ticks:{color:getVar('--muted'),font:{size:10}}, grid:{color:getVar('--border')}}
+      },
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:function(c){return formatEUR(c.parsed.y);}}}}
+    }
+  });
+}
+function getVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#000';
+}
+
+/* ================= EVENTS ================= */
+function attachListeners(){
+  var content = document.getElementById('content');
+
+  // month/year nav
+  qs('[data-action="pmonth-prev"]', function(){ shiftMonth('p',-1); });
+  qs('[data-action="pmonth-next"]', function(){ shiftMonth('p',1); });
+  qs('[data-action="mmonth-prev"]', function(){ shiftMonth('m',-1); });
+  qs('[data-action="mmonth-next"]', function(){ shiftMonth('m',1); });
+  qs('[data-action="year-prev"]', function(){ ui.year--; render(); });
+  qs('[data-action="year-next"]', function(){ ui.year++; render(); });
+
+  // type segment
+  var seg = document.getElementById('typeSeg');
+  if(seg) seg.querySelectorAll('button').forEach(function(b){
+    b.addEventListener('click', function(){ ui.txType = b.dataset.type; render(); });
+  });
+
+  // note -> category auto-guess
+  var noteInput = document.getElementById('txNote');
+  var catSelect = document.getElementById('txCategory');
+  if(noteInput && catSelect){
+    catSelect.addEventListener('change', function(){ catSelect.dataset.touched='true'; });
+    noteInput.addEventListener('input', function(){
+      if(catSelect.dataset.touched==='true') return;
+      var g = guessCategory(noteInput.value, ui.txType);
+      if(g) catSelect.value = g;
+    });
+  }
+
+  qs('[data-action="add-tx"]', addTransaction);
+  content.querySelectorAll('[data-action="toggle-cat"]').forEach(function(row){
+    function toggle(){ ui.openCat = (ui.openCat===row.dataset.cat) ? null : row.dataset.cat; render(); }
+    row.addEventListener('click', toggle);
+    row.addEventListener('keydown', function(e){ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggle(); } });
+  });
+  content.querySelectorAll('[data-action="del-tx"]').forEach(function(b){
+    b.addEventListener('click', function(){ delTransaction(b.dataset.id); });
+  });
+
+  // asset inputs
+  content.querySelectorAll('[data-asset]').forEach(function(inp){
+    inp.addEventListener('change', function(){ saveAssetField(inp.dataset.asset, inp.value); });
+  });
+
+  // goals
+  var gseg = document.getElementById('goalTypeSeg');
+  if(gseg) gseg.querySelectorAll('button').forEach(function(b){
+    b.addEventListener('click', function(){
+      gseg.querySelectorAll('button').forEach(function(x){x.classList.remove('active','inc');});
+      b.classList.add('active','inc');
+      gseg.dataset.selected = b.dataset.gtype;
+    });
+  });
+  if(gseg) gseg.dataset.selected = 'save';
+  qs('[data-action="add-goal"]', addGoal);
+  content.querySelectorAll('[data-action="del-goal"]').forEach(function(b){
+    b.addEventListener('click', function(){ delGoal(b.dataset.id); });
+  });
+  content.querySelectorAll('[data-action="toggle-edit-goal"]').forEach(function(b){
+    b.addEventListener('click', function(){
+      ui.editingGoalId = (ui.editingGoalId===b.dataset.id) ? null : b.dataset.id;
+      render();
+    });
+  });
+  content.querySelectorAll('[data-action="save-goal-amount"]').forEach(function(b){
+    b.addEventListener('click', function(){ saveGoalAmount(b.dataset.id); });
+  });
+
+  function qs(sel, fn){
+    var e = content.querySelector(sel);
+    if(e) e.addEventListener('click', fn);
+  }
+}
+function shiftMonth(prefix, dir){
+  var mk = prefix+'Month', yk = prefix+'Year';
+  ui[mk] += dir;
+  if(ui[mk]>12){ui[mk]=1; ui[yk]++;}
+  if(ui[mk]<1){ui[mk]=12; ui[yk]--;}
+  render();
+}
+function addTransaction(){
+ try{
+  var amount = parseFloat(document.getElementById('txAmount').value);
+  if(!amount || amount<=0){ showToast('Zadaj platnú sumu.'); return; }
+  var category = document.getElementById('txCategory').value;
+  var note = document.getElementById('txNote').value.trim();
+  var recurring = document.getElementById('txRecurring').checked;
+  var goalSel = document.getElementById('txGoal');
+  var tx = {
+    id: genId(), monthKey: monthKey(ui.pYear, ui.pMonth), day: today.getDate(),
+    type: ui.txType, amount: amount, category: category, note: note, recurring: recurring
+  };
+  // goalId je voliteľné — staršie záznamy ho nemajú a fungujú ďalej bez zmeny
+  if(ui.txType==='invest' && goalSel && goalSel.value) tx.goalId = goalSel.value;
+  state.transactions.push(tx);
+  saveState();
+  showToast('Pridané.');
+  render();
+ }catch(err){ showDebugError(err); }
+}
+function delTransaction(id){
+  var idx = -1;
+  for(var i=0;i<state.transactions.length;i++){ if(state.transactions[i].id===id){ idx=i; break; } }
+  if(idx===-1) return;
+  var removed = state.transactions[idx];
+  state.transactions.splice(idx,1);
+  saveState(); render();
+  showToast(removed.recurring ? 'Opakovaný pohyb vymazaný zo všetkých mesiacov.' : 'Pohyb vymazaný.', function(){
+    state.transactions.splice(idx,0,removed);
+    saveState(); render();
+  });
+}
+function saveAssetField(field, value){
+  var mKey = monthKey(ui.mYear, ui.mMonth);
+  if(!state.assets[mKey]) state.assets[mKey] = {};
+  state.assets[mKey][field] = parseFloat(value)||0;
+  saveState(); render();
+}
+function addGoal(){
+  var name = document.getElementById('goalName').value.trim();
+  var target = parseFloat(document.getElementById('goalTarget').value);
+  if(!name){ showToast('Zadaj názov cieľa.'); return; }
+  if(!target || target<=0){ showToast('Zadaj cieľovú sumu.'); return; }
+  var current = parseFloat(document.getElementById('goalCurrent').value)||0;
+  var gseg = document.getElementById('goalTypeSeg');
+  var type = (gseg && gseg.dataset.selected) || 'save';
+  var month = document.getElementById('goalMonth').value;
+  var year = document.getElementById('goalYear').value;
+  state.goals.push({id:genId(), name:name, type:type, target:target, current:current, month:month||null, year:year||null});
+  saveState(); showToast('Cieľ pridaný.'); render();
+}
+function saveGoalAmount(id){
+  var g = null;
+  for(var i=0;i<state.goals.length;i++){ if(state.goals[i].id===id){ g=state.goals[i]; break; } }
+  if(!g) return;
+  var input = document.getElementById('editGoalAmount');
+  var val = parseFloat(input.value);
+  if(isNaN(val) || val<0){ showToast('Zadaj platnú sumu.'); return; }
+  g.current = val;
+  ui.editingGoalId = null;
+  saveState(); showToast('Suma aktualizovaná.'); render();
+}
+function delGoal(id){
+  var idx = -1;
+  for(var i=0;i<state.goals.length;i++){ if(state.goals[i].id===id){ idx=i; break; } }
+  if(idx===-1) return;
+  var removed = state.goals[idx];
+  state.goals.splice(idx,1);
+  saveState(); render();
+  showToast('Cieľ vymazaný.', function(){
+    state.goals.splice(idx,0,removed);
+    saveState(); render();
+  });
+}
+
+function openSettings(){
+  var grid = document.getElementById('ratesGrid');
+  grid.innerHTML = ASSET_FIELDS.map(function(f){
+    return '<div class="l">'+f.emoji+' '+f.label+'</div><input type="number" step="1" data-rate="'+f.id+'" value="'+state.settings.rates[f.id]+'">';
+  }).join('');
+  document.getElementById('settingsOverlay').classList.add('show');
+}
+function closeSettings(){ document.getElementById('settingsOverlay').classList.remove('show'); }
+function saveSettings(){
+  document.querySelectorAll('[data-rate]').forEach(function(inp){
+    state.settings.rates[inp.dataset.rate] = parseFloat(inp.value)||0;
+  });
+  saveState(); closeSettings(); showToast('Nastavenia uložené.'); render();
+}
+function resetAll(){
+  openConfirm('Vynulovať všetky dáta?', 'Natrvalo sa vymažú všetky pohyby, majetok aj ciele z tohto zariadenia. Ak nemáš zálohu, nedá sa to vrátiť späť.', function(){
+    state = defaultState(); saveState(); closeSettings(); closeConfirm(); render();
+  });
+}
+var confirmCallback = null;
+function openConfirm(title, text, onYes, yesLabel){
+  document.getElementById('confirmYes').textContent = yesLabel || 'Áno, vymazať';
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmText').textContent = text;
+  confirmCallback = onYes;
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+function closeConfirm(){
+  document.getElementById('confirmOverlay').classList.remove('show');
+  confirmCallback = null;
+}
+
+function doBackup(){
+  var data = JSON.stringify(state, null, 2);
+  var filename = 'rodinny-rozpocet-zaloha-'+new Date().toISOString().slice(0,10)+'.json';
+  offerDownload(filename, data, 'application/json', function(){
+    state.meta.lastBackup = Date.now();
+    saveState(); render();
+  });
+}
+function doCsv(){
+  var rows = [['mesiac','den','typ','suma','kategoria','poznamka','opakovane']];
+  state.transactions.forEach(function(t){
+    var info = catInfo(t.category, t.type);
+    rows.push([t.monthKey, t.day||'', t.type, t.amount, info.label, (t.note||'').replace(/"/g,"'"), t.recurring?'ano':'nie']);
+  });
+  var csv = rows.map(function(r){
+    return r.map(function(v){ v=String(v); return /[",;\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }).join(';');
+  }).join('\n');
+  offerDownload('rodinny-rozpocet-pohyby.csv', '\uFEFF'+csv, 'text/csv');
+}
+function offerDownload(filename, text, mime, onDone){
+  var blob = new Blob([text], {type:mime});
+  // Na mobile otvoríme systémové "Zdieľať" (Uložiť do Súborov, iCloud, poslať si...),
+  // lebo klasické sťahovanie v appke na ploche iPhonu nefunguje spoľahlivo.
+  if(downloadsCap){
+    downloadsCap.save({filename:filename, data:blob}).then(function(){
+      if(onDone) onDone();
+      showToast('Súbor uložený.');
+    }).catch(function(err){
+      if(err && err.code==='declined') return;
+      fallbackDownload(filename, blob, onDone);
+    });
+    return;
+  }
+  if(isMobile && navigator.share && navigator.canShare){
+    try{
+      var file = new File([blob], filename, {type:mime});
+      if(navigator.canShare({files:[file]})){
+        navigator.share({files:[file], title:filename}).then(function(){
+          if(onDone) onDone();
+          showToast('Súbor uložený.');
+        }).catch(function(err){
+          if(err && err.name==='AbortError') return;
+          fallbackDownload(filename, blob, onDone);
+        });
+        return;
+      }
+    }catch(e){}
+  }
+  fallbackDownload(filename, blob, onDone);
+}
+function fallbackDownload(filename, blob, onDone){
+  try{
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(url);}, 1000);
+    if(onDone) onDone();
+  }catch(e){ showToast('Sťahovanie sa tu nepodarilo spustiť.'); }
+}
+function doRestore(){
+  document.getElementById('fileInput').click();
+}
+function handleRestoreFile(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(evt){
+    var parsed;
+    try{ parsed = JSON.parse(evt.target.result); }catch(err){ showToast('Súbor sa nepodarilo načítať.'); return; }
+    if(!parsed || typeof parsed!=='object' || (!parsed.transactions && !parsed.goals && !parsed.assets)){
+      showToast('Toto nevyzerá ako záloha z tejto appky.'); return;
+    }
+    var restored = normalizeLoadedState(parsed);
+    openConfirm('Obnoviť zo zálohy?',
+      'Aktuálne dáta v appke sa nahradia zálohou. V zálohe je pohybov: '+restored.transactions.length+', cieľov: '+restored.goals.length+'.',
+      function(){
+        state = restored;
+        saveState(); closeConfirm(); showToast('Záloha obnovená.'); render();
+      }, 'Áno, obnoviť');
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+function showToast(msg, undoFn){
+  var t = document.getElementById('toast');
+  t.innerHTML = escapeHtml(msg) + (undoFn ? ' <button class="toast-undo" id="toastUndoBtn">Späť</button>' : '');
+  t.classList.add('show');
+  clearTimeout(showToast._h);
+  if(undoFn){
+    document.getElementById('toastUndoBtn').onclick = function(){
+      undoFn(); t.classList.remove('show'); clearTimeout(showToast._h);
+    };
+  }
+  showToast._h = setTimeout(function(){ t.classList.remove('show'); }, 4500);
+}
+
+/* ================= GLOBAL LISTENERS ================= */
+document.querySelectorAll('.tabbtn').forEach(function(b, i){
+  b.addEventListener('click', function(){ switchTab(b.dataset.tab); });
+  if(i===0) b.classList.add('active');
+});
+document.getElementById('fileInput').addEventListener('change', handleRestoreFile);
+document.body.addEventListener('click', function(e){
+  var el = e.target.closest('[data-action]');
+  if(!el) return;
+  var act = el.dataset.action;
+  if(act==='open-settings') openSettings();
+  else if(act==='close-settings') closeSettings();
+  else if(act==='save-settings') saveSettings();
+  else if(act==='reset-all') resetAll();
+  else if(act==='backup') doBackup();
+  else if(act==='restore') doRestore();
+  else if(act==='csv') doCsv();
+  else if(act==='dismiss-install'){ flagSet('rr_install_dismissed','1'); render(); }
+  else if(act==='snooze-backup'){ flagSet('rr_backup_snooze', new Date().toISOString().slice(0,10)); render(); }
+  else if(act==='confirm-yes'){ if(confirmCallback) confirmCallback(); }
+  else if(act==='confirm-no') closeConfirm();
+});
+document.getElementById('confirmOverlay').addEventListener('click', function(e){
+  if(e.target===this) closeConfirm();
+});
+document.getElementById('settingsOverlay').addEventListener('click', function(e){
+  if(e.target===this) closeSettings();
+});
+
+/* Vložená verzia na claude.ai: sťahovanie súborov ide cez claude.ai a jednorazovo
+   prenesieme dáta zo staršej verzie appky, ktorá ich zálohovala online.
+   Nová verzia už nikam nič neposiela — online kópiu iba raz prečíta, ak je appka v zariadení prázdna. */
+var downloadsCap = null;
+function isStateEmpty(s){
+  return s.transactions.length===0 && s.goals.length===0 && Object.keys(s.assets).length===0;
+}
+function importFromOldVersion(){
+  if(!isEmbedded || !isStateEmpty(state) || !(window.claude && window.claude.use)) return;
+  Promise.all([window.claude.use('db'), window.claude.use('user')]).then(function(res){
+    var db = res[0], user = res[1];
+    if(!db || !user) return;
+    return user.id().then(function(uid){
+      if(!uid) return;
+      return db.doc('data/users/'+uid+'/state').get().then(function(snap){
+        if(!snap || !snap.exists || !isStateEmpty(state)) return;
+        var old = normalizeLoadedState(snap.data());
+        if(isStateEmpty(old)) return;
+        state = old;
+        saveState();
+        // ak už používateľ niečo rozpisuje, neprekresľujeme mu obrazovku pod rukami
+        if(!userTouched){ render(); showToast('Dáta prenesené zo staršej verzie appky.'); }
+      });
+    });
+  }).catch(function(){});
+}
+if(isEmbedded && window.claude && window.claude.use){
+  window.claude.use('downloads').then(function(d){ downloadsCap = d; }).catch(function(){});
+}
+
+loadState().then(function(loaded){
+  state = loaded;
+  render();
+  importFromOldVersion();
+});
+// Požiadame prehliadač, aby dáta tejto stránky nemazal pri nedostatku miesta.
+if(navigator.storage && navigator.storage.persist){
+  navigator.storage.persist().catch(function(){});
+}
+// Offline režim + inštalácia na plochu.
+if('serviceWorker' in navigator && location.protocol!=='file:' && !isEmbedded){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+})();
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Head from "next/head";
 import ContactFormModal from "../../../components/ContactFormModal";
+import CalculatorCta from "@/components/CalculatorCta";
 
 export default function DochodokPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,7 +23,7 @@ export default function DochodokPage() {
   return (
     <>
       <Head>
-        <link rel="preload" href="/dôchodok.svg" as="image" type="image/svg+xml" />
+        <link rel="preload" href="/dochodok-banner.jpg" as="image" type="image/jpeg" />
       </Head>
       <main className="min-h-screen">
         {/* Contact Modal */}
@@ -33,10 +34,10 @@ export default function DochodokPage() {
         {/* Banner background image */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/dôchodok.svg"
-            alt="Banner background"
+            src="/dochodok-banner.jpg"
+            alt="Pár pri plánovaní dôchodku pri západe slnka"
             fill
-            className="object-cover object-right"
+            className="object-cover object-center"
             priority
           />
           {/* Dark overlay for better text readability */}
@@ -104,17 +105,62 @@ export default function DochodokPage() {
             </div>
           </div>
 
-          {/* Image Section */}
+          {/* Infographics Section */}
           <div className="mb-12">
-            <div className="max-w-3xl mx-auto">
-              <Image
-                src="/image copy.png"
-                alt="Dôchodok - Finančné poradenstvo"
-                width={800}
-                height={600}
-                className="w-full h-auto rounded-xl object-cover shadow-lg"
-              />
+            <div className="text-center mb-10 md:mb-12">
+              <h3 className="text-2xl md:text-3xl font-bold text-[#202325] mb-3">
+                Demografia a budúcnosť dôchodkov
+              </h3>
+              <p className="text-gray-600 max-w-2xl mx-auto text-base md:text-lg leading-relaxed">
+                Oficiálna prognóza MF SR a Európskej komisie: pomer pracujúcich k počtu dôchodcov klesá. Čím menej ľudí prispieva do systému, tým dôležitejšie je vlastné sporenie.
+              </p>
             </div>
+
+            <div className="grid grid-cols-1 gap-8 lg:gap-10 max-w-5xl mx-auto">
+              <figure className="group bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
+                <div className="bg-gradient-to-br from-[#5ECAD5]/10 to-white px-5 py-4 md:px-6 md:py-5 border-b border-gray-100">
+                  <span className="inline-block text-xs font-semibold uppercase tracking-wider text-[#5ECAD5] mb-1">
+                    Slovensko, 2022 – 2060
+                  </span>
+                  <figcaption className="text-base md:text-lg font-semibold text-[#202325] leading-snug">
+                    O zhruba 35 rokov bude na jedného dôchodcu pracovať len 1,1 človeka
+                  </figcaption>
+                </div>
+                <div className="p-4 sm:p-5 md:p-6 bg-[#f8f9fa]">
+                  <Image
+                    src="/pracujuci-na-dochodcu-2060.webp"
+                    alt="Graf: počet pracujúcich na jedného dôchodcu – prognóza do roku 2060"
+                    width={1200}
+                    height={650}
+                    className="w-full h-auto rounded-lg object-contain"
+                  />
+                </div>
+              </figure>
+
+              <figure className="group bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
+                <div className="bg-gradient-to-br from-[#5ECAD5]/10 to-white px-5 py-4 md:px-6 md:py-5 border-b border-gray-100">
+                  <span className="inline-block text-xs font-semibold uppercase tracking-wider text-[#5ECAD5] mb-1">
+                    Slovensko, 2022 – 2070
+                  </span>
+                  <figcaption className="text-base md:text-lg font-semibold text-[#202325] leading-snug">
+                    Dnes na jedného dôchodcu pracujú necelí dvaja ľudia – okolo roku 2060 to bude 1,1 pracujúceho
+                  </figcaption>
+                </div>
+                <div className="p-4 sm:p-5 md:p-6 bg-[#f8f9fa]">
+                  <Image
+                    src="/pracujuci-na-dochodcu-2070.webp"
+                    alt="Graf: pomer zamestnaných k poberateľom dôchodkov – prognóza do roku 2070"
+                    width={1200}
+                    height={650}
+                    className="w-full h-auto rounded-lg object-contain"
+                  />
+                </div>
+              </figure>
+            </div>
+
+            <p className="text-center text-xs sm:text-sm text-gray-500 mt-8 max-w-3xl mx-auto leading-relaxed">
+              Zdroj: 2024 Ageing Report, Slovak Republic – Country Fiche (MF SR, Európska komisia), tabuľka 10. Počet zamestnaných / počet poberateľov dôchodkov (všetky typy).
+            </p>
           </div>
           {/* Bottom Quote */}
           <div className="bg-gradient-to-r from-[#5ECAD5]/5 to-blue-50/50 rounded-xl p-6 border-l-4 border-[#5ECAD5] mt-12">
@@ -137,6 +183,8 @@ export default function DochodokPage() {
               <p>• Práve preto je dôležité mať vlastné rezervy, investície alebo doplnkové zabezpečenie. Spoliehať sa výlučne na štát dnes nie je istota – ale riziko.</p>
             </div>
           </div>
+
+          <CalculatorCta slug="dochodok" className="mt-12" />
 
           {/* Simple CTA */}
           <div className="text-center mt-16 pt-8 border-t border-gray-200">

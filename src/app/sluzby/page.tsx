@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import ContactModal from "../../components/ContactModal";
+import CalculatorCta from "@/components/CalculatorCta";
 
 export default function SluzbyPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -252,6 +253,13 @@ export default function SluzbyPage() {
               <p className="text-gray-300 text-sm leading-relaxed">Poskytujeme dlhodobú starostlivosť a podporu</p>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Calculators */}
+      <section className="py-12 md:py-16 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <CalculatorCta slug="rozpocet" />
         </div>
       </section>
 

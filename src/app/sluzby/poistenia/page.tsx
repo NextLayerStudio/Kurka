@@ -131,10 +131,10 @@ export default function PoistieniaPage() {
         {/* Banner background image */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/Poistenia.svg"
-            alt="Banner background"
+            src="/poistenia-banner.jpg"
+            alt="Rodina pri západe slnka"
             fill
-            className="object-cover object-right md:object-right"
+            className="object-cover object-center"
             priority
           />
           {/* Dark overlay for better text readability */}

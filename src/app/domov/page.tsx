@@ -76,7 +76,7 @@ export default function DomovPage() {
     // Animate each counter with different delays for staggered effect
     animateCounter(setLicenseCount, 6, 1500, 500);
     animateCounter(setClientCount, 3000, 2000, 700);
-    animateCounter(setMoneyCount, 650000, 2500, 900);
+    animateCounter(setMoneyCount, 1200000, 2500, 900);
     animateCounter(setMortgageCount, 2.5, 1800, 1100);
     animateCounter(setExperienceCount, 20, 1600, 1300);
   }, []);
@@ -348,7 +348,7 @@ export default function DomovPage() {
             {/* Money Under Management */}
             <div className="text-center flex flex-col items-center w-1/2 sm:w-auto">
               <div className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#5ECAD5] mb-0 whitespace-nowrap mt-2 sm:mt-2 md:mt-3 lg:mt-4">
-                {moneyCount.toLocaleString()}€
+                {moneyCount.toLocaleString()}€+
               </div>
               <div className="text-sm sm:text-sm md:text-base font-semibold text-[#202325] uppercase tracking-wide leading-tight mt-2 sm:mt-2 md:mt-3">
                 POD SPRÁVOU<br/>KANCELÁRIE

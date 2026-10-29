@@ -39,7 +39,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Ensure API routes work properly
   async headers() {
-    return [
+    const headers = [
       {
         source: '/api/:path*',
         headers: [
@@ -49,13 +49,18 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // Cache Next.js static files
-        source: '/_next/static/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
+        source: '/kalkulacky/:path*.html',
+        headers: [{ key: 'Cache-Control', value: 'no-cache' }],
       },
     ];
+    // In dev, immutable caching makes the browser keep stale client bundles
+    if (process.env.NODE_ENV === 'production') {
+      headers.push({
+        source: '/_next/static/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      });
+    }
+    return headers;
   },
 };
 

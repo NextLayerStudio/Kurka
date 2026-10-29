@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dôchodková kalkulačka</title>
+<meta name="description" content="Dôchodková kalkulačka – koľko vám dá štát, koľko bude chýbať a koľko investovať. Michal Kurka, Financial Advisor.">
+<link rel="icon" type="image/png" href="icon.png">
+<link href="fonts.css" rel="stylesheet">
+<style>
+/* Layout: tmavý pás s hlavným výsledkom hore, pod ním dve karty vedľa seba (Vaše údaje | Koľko chcem dôchodok),
+   potom graf príjmu vedľa tabuľky ceny odkladania a výzva na kontakt. Na mobile pod sebou + plávajúci výsledok dole.
+   Jedna svetlá téma, rovnaké farby a písmo ako web michalkurka.sk a investičná kalkulačka. */
+:root{
+  color-scheme:light;
+  --bg:#FFFFFF;
+  --soft:#F3F6F7;
+  --ink:#202325;
+  --slate:#3A4654;
+  --muted:#66707C;
+  --line:#E1E6E9;
+  --accent:#5ECAD5;
+  --accent-strong:#1F8E99;
+  --accent-soft:#E2F6F8;
+  --dark:#202325;
+  --on-dark:#CED3DA;
+  --c-p1:#3A4654;
+  --c-p2:#8FA3B5;
+  --c-gap:#E07A6A;
+  --c-income:#5ECAD5;
+  --c-target:#D4801C;
+  --radius:12px;
+  --font-d:'Monda','Arial',sans-serif;
+  --font-b:Arial,'Helvetica Neue',Helvetica,sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;}
+[hidden]{display:none!important;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-b);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;}
+h1,h2,h3{font-family:var(--font-d);margin:0;text-wrap:balance;font-weight:700;}
+.num{font-family:var(--font-d);font-variant-numeric:tabular-nums;}
+.page{max-width:1100px;margin:0 auto;padding-inline:16px;padding-block:32px 48px;display:grid;gap:22px;}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--accent-strong);outline-offset:2px;}
+
+/* ---- úvod ---- */
+.intro{display:grid;gap:10px;max-width:66ch;}
+.intro .kicker{font-family:var(--font-d);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-strong);}
+.intro h1{font-size:clamp(28px,4.4vw,42px);line-height:1.12;letter-spacing:-.01em;}
+.intro h1 em{font-style:normal;color:var(--accent-strong);}
+.intro p{margin:0;color:var(--muted);font-size:16px;}
+
+/* ---- tmavý pás ---- */
+.band{background:var(--dark);color:#fff;border-radius:18px;padding:26px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:26px;align-items:center;position:relative;overflow:hidden;}
+.band::before{content:"";position:absolute;left:-80px;bottom:-90px;width:240px;height:240px;border-radius:50%;border:30px solid var(--accent);opacity:.10;pointer-events:none;}
+@media (max-width:820px){ .band{grid-template-columns:minmax(0,1fr);padding:22px;} }
+.story{display:grid;gap:10px;min-width:0;position:relative;}
+.story .lbl{font-family:var(--font-d);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);}
+.story .big{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.story .big .v{font-size:clamp(42px,7vw,66px);line-height:1;color:#fff;}
+.story .big .u{font-family:var(--font-d);font-size:17px;color:var(--on-dark);}
+.story p{margin:0;color:var(--on-dark);font-size:15px;max-width:48ch;}
+.story p b{color:#fff;}
+.mode{display:inline-flex;background:#2A2E31;border-radius:999px;padding:3px;gap:2px;justify-self:start;}
+.mode button{border:none;background:transparent;color:var(--on-dark);font:700 12.5px var(--font-d);padding:6px 12px;border-radius:999px;cursor:pointer;}
+.mode button[aria-pressed="true"]{background:var(--accent);color:var(--dark);}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;position:relative;z-index:1;}
+.tile{background:#2A2E31;border-radius:var(--radius);padding:14px 16px;display:grid;gap:2px;min-width:0;}
+.tile .k{font-size:12.5px;color:var(--on-dark);}
+.tile .v{font-size:clamp(18px,2.4vw,22px);color:#fff;overflow-wrap:anywhere;}
+.tile .s{font-size:12px;color:var(--on-dark);}
+.tile.gap .v{color:var(--c-gap);}
+.tile.cap .v{color:var(--accent);}
+.btn-pdf{display:inline-flex;align-items:center;gap:8px;justify-self:start;background:var(--accent);color:var(--dark);border:none;border-radius:8px;padding:11px 16px;font:700 14.5px var(--font-d);cursor:pointer;margin-top:4px;}
+.btn-pdf:hover{background:#7BD7E0;}
+.btn-pdf svg{width:16px;height:16px;flex:none;}
+
+/* ---- vstupy ---- */
+.inputs{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:16px;align-items:start;}
+@media (max-width:900px){ .inputs{grid-template-columns:minmax(0,1fr);} }
+.card{border:1px solid var(--line);border-radius:var(--radius);padding:18px;display:grid;gap:16px;min-width:0;background:var(--bg);}
+.card-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;}
+.card-head h2{font-size:21px;}
+.card-head p{margin:0;color:var(--muted);font-size:13.5px;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;}
+.field{background:var(--soft);border-radius:var(--radius);padding:14px;display:grid;gap:9px;align-content:start;min-width:0;}
+.field-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.field label,.field .label{font-family:var(--font-d);font-size:15px;}
+.info{width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--muted);font:700 12px/1 var(--font-d);cursor:pointer;flex:none;}
+.info[aria-expanded="true"]{background:var(--accent);border-color:var(--accent);color:var(--dark);}
+.hint{margin:0;font-size:13px;color:var(--slate);background:var(--bg);border-left:3px solid var(--accent);border-radius:6px;padding:8px 10px;}
+.derived{margin:0;font-size:13px;color:var(--slate);}
+.derived b{font-family:var(--font-d);color:var(--ink);}
+.entry{display:flex;align-items:center;gap:8px;}
+.entry .box{flex:1;min-width:0;display:flex;align-items:baseline;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:0 12px;height:44px;}
+.entry .box:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.entry input{flex:1;min-width:0;width:0;border:none;background:transparent;font:700 19px var(--font-d);color:var(--ink);font-variant-numeric:tabular-nums;height:42px;outline:none;padding:0;}
+.entry .unit{color:var(--muted);font-size:13px;white-space:nowrap;}
+.entry button{width:44px;height:44px;flex:none;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:700 19px/1 var(--font-d);cursor:pointer;}
+.entry button:hover{border-color:var(--accent);color:var(--accent-strong);}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;background:linear-gradient(to right,var(--accent) var(--p,0%),#D9DEE2 var(--p,0%));outline:none;margin:2px 0 0;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:7px;background:var(--dark);border:3px solid var(--accent);cursor:pointer;}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:6px;background:var(--dark);border:3px solid var(--accent);cursor:pointer;}
+.ends{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;}
+
+/* segmenty a prepínače */
+.segmented{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--soft);border-radius:12px;padding:4px;gap:4px;}
+.segmented button{border:none;background:transparent;border-radius:9px;padding:10px 8px;font:700 14px var(--font-d);color:var(--slate);cursor:pointer;line-height:1.25;}
+.segmented button small{display:block;font:400 11.5px var(--font-b);color:var(--muted);}
+.segmented button[aria-pressed="true"]{background:var(--dark);color:#fff;}
+.segmented button[aria-pressed="true"] small{color:var(--on-dark);}
+.segmented.light{background:var(--bg);border:1px solid var(--line);}
+.switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--soft);border-radius:var(--radius);padding:12px 14px;}
+.switch-row .t{font-family:var(--font-d);font-size:15px;}
+.switch-row .d{display:block;font:13px var(--font-b);color:var(--muted);}
+.switch{position:relative;width:50px;height:28px;border-radius:999px;border:none;background:#C9D0D6;cursor:pointer;flex:none;transition:background .2s;}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s;}
+.switch[aria-checked="true"]{background:var(--accent-strong);}
+.switch[aria-checked="true"]::after{transform:translateX(22px);}
+.sub{display:grid;gap:12px;border-left:3px solid var(--accent);padding-left:12px;}
+.more{justify-self:start;background:none;border:1px solid var(--line);border-radius:999px;padding:8px 14px;font:700 13.5px var(--font-d);color:var(--accent-strong);cursor:pointer;}
+.more[aria-expanded="true"]{background:var(--accent-soft);border-color:var(--accent);}
+
+/* cieľ */
+.goal{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);}
+@media (max-width:900px){ .goal{position:static;} }
+.badge{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:#14636B;border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:700;justify-self:start;}
+.linkbtn{background:none;border:none;color:var(--accent-strong);font:700 13px var(--font-b);cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px;justify-self:start;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chips button{border:1px solid var(--line);background:var(--bg);color:var(--slate);border-radius:999px;padding:6px 11px;font:700 12.5px var(--font-d);cursor:pointer;}
+.chips button[aria-pressed="true"]{background:var(--dark);border-color:var(--dark);color:#fff;}
+.how{background:var(--soft);border-radius:var(--radius);padding:14px;display:grid;gap:8px;}
+.how h3{font-size:15px;}
+.how ul{margin:0;padding-left:18px;font-size:13.5px;color:var(--slate);display:grid;gap:4px;}
+
+/* graf + cena odkladania */
+.split{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start;}
+@media (max-width:900px){ .split{grid-template-columns:minmax(0,1fr);} }
+.chartbox{position:relative;height:320px;}
+@media (max-width:520px){ .chartbox{height:280px;} }
+.tablewrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums;}
+th{text-align:right;font:12px var(--font-d);color:var(--muted);padding:0 0 8px;border-bottom:1px solid var(--line);white-space:nowrap;}
+th:first-child,td:first-child{text-align:left;}
+td{text-align:right;padding:10px 0;border-bottom:1px solid var(--line);white-space:nowrap;}
+td + td,th + th{padding-left:12px;}
+tr:last-child td{border-bottom:none;}
+td.more-cost{color:var(--c-gap);font-weight:700;}
+tr.now td{font-weight:700;}
+.meter{height:6px;border-radius:6px;background:var(--line);overflow:hidden;margin-top:5px;}
+.meter i{display:block;height:100%;background:var(--accent);}
+.delay-note{margin:0;font-size:13px;color:var(--muted);}
+
+/* výzva */
+.cta{background:var(--accent);color:var(--dark);border-radius:18px;padding:22px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;}
+.cta h3{font-size:20px;}
+.cta p{margin:4px 0 0;font-size:14.5px;}
+.cta .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.cta a.primary{background:var(--dark);color:#fff;text-decoration:none;font:700 15px var(--font-d);padding:12px 20px;border-radius:8px;white-space:nowrap;}
+.cta a.primary:hover{background:#000;}
+.cta a.phone{color:var(--dark);font:700 16px var(--font-d);text-decoration:none;white-space:nowrap;padding:10px 4px;}
+.cta .btn-outline{background:transparent;border:2px solid var(--dark);color:var(--dark);border-radius:8px;padding:10px 18px;font:700 15px var(--font-d);cursor:pointer;}
+.note{margin:0;font-size:12.5px;color:var(--muted);max-width:95ch;}
+
+/* plávajúci výsledok */
+.peek{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));background:var(--dark);color:#fff;border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:10;transform:translateY(140%);transition:transform .25s ease;}
+.peek.show{transform:none;}
+.peek .k{font-size:12.5px;color:var(--on-dark);}
+.peek .v{font-size:20px;color:var(--accent);}
+@media (min-width:821px){ .peek{display:none;} }
+
+/* okná */
+.overlay{position:fixed;inset:0;background:rgba(20,24,27,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50;}
+.overlay.embedded{position:absolute;left:0;right:0;top:0;align-items:flex-start;}
+.modal{position:relative;background:var(--bg);border-radius:16px;max-width:520px;width:100%;max-height:calc(100% - 16px);overflow:auto;padding:22px;display:grid;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.modal.wide{max-width:760px;}
+.modal h2{font-size:21px;}
+.modal .lead{margin:0;color:var(--muted);font-size:14.5px;}
+.modal-x{position:absolute;right:14px;top:14px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--bg);font:700 16px/1 var(--font-d);cursor:pointer;color:var(--muted);}
+.method{display:grid;gap:14px;font-size:14px;color:var(--slate);}
+.method h3{font-size:15.5px;color:var(--ink);margin-bottom:4px;}
+.method p{margin:0;}
+.method .f{font-family:var(--font-d);background:var(--soft);border-radius:8px;padding:8px 10px;color:var(--ink);overflow-x:auto;white-space:nowrap;margin-top:6px;font-size:13.5px;}
+.advisor{display:flex;gap:12px;align-items:center;background:var(--accent-soft);border-radius:12px;padding:12px 14px;}
+.advisor b{font-family:var(--font-d);font-size:16px;display:block;}
+.advisor span{font-size:13px;color:var(--slate);}
+.mono{width:48px;height:48px;border-radius:50%;background:var(--dark);color:#fff;font:700 17px var(--font-d);display:grid;place-items:center;box-shadow:inset 0 0 0 3px var(--accent);flex:none;}
+.adv-logo{width:48px;height:48px;object-fit:contain;flex:none;}
+.form{display:grid;gap:10px;}
+.form label.f{display:grid;gap:5px;font-weight:700;font-size:13.5px;}
+.form label.f small{font-weight:400;color:var(--muted);}
+.form input[type=text],.form input[type=email],.form input[type=tel]{height:44px;border:1px solid var(--line);border-radius:10px;padding:0 12px;font:15px var(--font-b);color:var(--ink);background:var(--bg);width:100%;}
+.form input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--slate);background:var(--soft);border-radius:10px;padding:10px 12px;line-height:1.45;}
+.consent input{margin:2px 0 0;width:18px;height:18px;flex:none;accent-color:var(--accent-strong);}
+.consent a{color:var(--accent-strong);}
+.err{margin:0;color:#B5483F;font-size:13px;}
+.modal-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.btn-secondary{background:var(--soft);border:none;border-radius:10px;padding:12px 16px;font:700 14px var(--font-d);cursor:pointer;color:var(--ink);}
+.btn-main{flex:1;min-width:200px;background:var(--dark);color:#fff;border:none;border-radius:10px;padding:12px 16px;font:700 14.5px var(--font-d);cursor:pointer;}
+.btn-main.accent{background:var(--accent);color:var(--dark);}
+.skip{background:none;border:none;border-top:1px solid var(--line);color:var(--muted);text-decoration:underline;text-underline-offset:3px;font:14px var(--font-b);cursor:pointer;width:100%;padding:14px 6px 6px;}
+.spinner{width:38px;height:38px;border-radius:50%;border:4px solid var(--accent-soft);border-top-color:var(--accent-strong);animation:spin 1s linear infinite;justify-self:center;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.center{text-align:center;justify-items:center;}
+.status{font-size:13px;border-radius:10px;padding:9px 11px;margin:0;text-align:left;}
+.status.ok{background:var(--accent-soft);color:#14636B;}
+.status.warn{background:#FCEFE3;color:#8A4B12;}
+@media (prefers-reduced-motion:reduce){ .peek,.switch,.switch::after{transition:none;} .spinner{animation-duration:3s;} }
+
+/* PDF strana A4 (mimo obrazovky) */
+.rep-host{position:fixed;left:-10000px;top:0;pointer-events:none;}
+.rep{width:794px;min-height:1123px;background:#fff;color:#202325;font-family:var(--font-b);padding:26px 42px 18px;display:flex;flex-direction:column;gap:11px;}
+.rep-head{display:flex;justify-content:space-between;align-items:center;gap:20px;padding-bottom:14px;border-bottom:3px solid var(--accent);}
+.rep-brand{display:flex;gap:12px;align-items:center;}
+.rep-brand .mono{width:58px;height:58px;font-size:20px;}
+.rep-logo{height:60px;width:auto;display:block;}
+.rep-brand b{font:700 21px var(--font-d);display:block;}
+.rep-brand b .co{font:400 15px var(--font-b);color:var(--muted);}
+.rep-brand span{color:var(--muted);font-size:13px;}
+.rep-title{text-align:right;}
+.rep-title h1{font:700 23px var(--font-d);color:var(--accent-strong);}
+.rep-title p{margin:3px 0 0;font-size:12.5px;color:var(--muted);}
+.rep-title p b{color:#202325;}
+.rep-intro{background:var(--accent-soft);border-left:4px solid var(--accent);border-radius:8px;padding:9px 15px;font-size:12.5px;line-height:1.55;margin:0;}
+.rep-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:14px;}
+.rep-box{border:1px solid var(--line);border-radius:12px;padding:11px 16px;}
+.rep-box h3{font:700 11px var(--font-d);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;}
+.rep-kv{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--line);}
+.rep-kv:last-child{border-bottom:none;}
+.rep-kv b{font-family:var(--font-d);text-align:right;}
+.rep-res{background:var(--dark);color:#fff;border:none;}
+.rep-res h3{color:var(--accent);}
+.rep-res .big{font:700 40px var(--font-d);line-height:1.05;}
+.rep-res .big small{font-size:16px;color:var(--on-dark);}
+.rep-res .sub{font-size:12px;color:var(--on-dark);margin:5px 0 10px;line-height:1.45;}
+.rep-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.rep-tiles div{background:#2A2E31;border-radius:8px;padding:7px 10px;}
+.rep-tiles .k{display:block;font-size:10.5px;color:var(--on-dark);}
+.rep-tiles .v{font:700 15.5px var(--font-d);}
+.rep-two{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;}
+.rep-chart img{width:100%;height:auto;display:block;}
+.rep table{font-size:12.5px;}
+.rep td{padding:6px 0;}
+.rep-foot{margin-top:auto;background:var(--dark);color:#fff;border-radius:12px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:16px;}
+.rep-foot > div:first-child{flex:1;min-width:0;}
+.rep-foot b{font:700 15px var(--font-d);display:block;}
+.rep-foot .line{display:block;font-size:12.5px;color:var(--on-dark);}
+.rep-foot .say{font:700 14px var(--font-d);color:var(--accent);text-align:right;line-height:1.35;white-space:nowrap;}
+.rep-assume{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 16px;font-size:12px;color:var(--slate);}
+.rep-assume b{font-family:var(--font-d);color:#202325;}
+.rep-disc{font-size:9.5px;color:var(--muted);line-height:1.5;margin:0;text-align:center;}
+</style>
+</head>
+<body>
+<main class="page">
+  <header class="intro">
+    <span class="kicker">Dôchodková kalkulačka</span>
+    <h1>Dôchodok nie je dátum. <em>Je to suma.</em></h1>
+    <p>Zistite, koľko vám podľa dnešných pravidiel dá štát, koľko bude chýbať do dôchodku, z ktorého sa dá dobre žiť, a koľko na to treba začať odkladať už teraz.</p>
+  </header>
+
+  <section class="band" id="band" aria-live="polite" aria-labelledby="r-lbl">
+    <div class="story">
+      <div class="mode" role="group" aria-label="Ako zobraziť sumy">
+        <button type="button" data-mode="nominal" aria-pressed="false" title="Sumy v budúcich peniazoch, mesačná investícia je stále rovnaká">S infláciou</button>
+        <button type="button" data-mode="real" aria-pressed="false" title="Sumy v dnešných peniazoch, investícia sa každý rok navyšuje o infláciu">V dnešných cenách</button>
+      </div>
+      <span class="lbl" id="r-lbl">Už dnes treba mesačne investovať</span>
+      <div class="big"><span class="v num" id="r-monthly">0 €</span><span class="u">mesačne</span></div>
+      <p id="r-sentence"></p>
+      <button type="button" class="btn-pdf" data-open-pdf>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14"/></svg>
+        Stiahnuť PDF s výsledkom
+      </button>
+    </div>
+    <div class="tiles">
+      <div class="tile"><span class="k">Štátny dôchodok</span><span class="v num" id="t-p1">0 €</span><span class="s" id="t-p1s">mesačne, I. pilier</span></div>
+      <div class="tile gap"><span class="k">Chýba mesačne</span><span class="v num" id="t-gap">0 €</span><span class="s" id="t-gaps">do cieľa</span></div>
+      <div class="tile cap"><span class="k">Potrebný kapitál</span><span class="v num" id="t-cap">0 €</span><span class="s" id="t-caps">na dôchodok</span></div>
+      <div class="tile"><span class="k">Odchod do dôchodku</span><span class="v num" id="t-ret">–</span><span class="s" id="t-rets">vek</span></div>
+    </div>
+  </section>
+
+  <div class="inputs">
+    <section class="card" aria-labelledby="you-h">
+      <div class="card-head"><h2 id="you-h">Vaše údaje</h2><p>Výsledky sa prepočítajú hneď.</p></div>
+      <div class="segmented" role="group" aria-label="Typ príjmu">
+        <button type="button" data-type="employee" aria-pressed="true">Zamestnanec</button>
+        <button type="button" data-type="szco" aria-pressed="false">SZČO</button>
+      </div>
+      <div class="grid2" id="f-basic"></div>
+      <div class="switch-row"><span><span class="t" id="lbl-p2">Mám II. pilier</span><span class="d">Sporím si v dôchodkovej správcovskej spoločnosti</span></span>
+        <button type="button" class="switch" role="switch" aria-checked="false" aria-labelledby="lbl-p2" id="sw-p2"></button></div>
+      <div class="sub" id="p2-box" hidden>
+        <div class="grid2" id="f-p2"></div>
+        <div class="field"><span class="label" id="lbl-fund">Fond v II. pilieri</span>
+          <div class="segmented light" role="group" aria-labelledby="lbl-fund" id="fund-seg"></div></div>
+      </div>
+      <div class="switch-row"><span><span class="t" id="lbl-early">Chcem ísť do dôchodku skôr</span><span class="d">Predčasný dôchodok najviac 2 roky pred zákonným vekom</span></span>
+        <button type="button" class="switch" role="switch" aria-checked="false" aria-labelledby="lbl-early" id="sw-early"></button></div>
+      <div class="sub" id="early-box" hidden><div class="grid2" id="f-early"></div></div>
+      <div class="grid2" id="f-invest"></div>
+      <button type="button" class="more" id="more-btn" aria-expanded="false" aria-controls="adv-box">Rozšírený prepočet</button>
+      <div class="sub" id="adv-box" hidden>
+        <div class="grid2" id="f-adv"></div>
+        <div class="switch-row"><span><span class="t" id="lbl-sf">Opatrnejší odhad štátneho dôchodku</span><span class="d">Zníži štátny dôchodok o 1 % za každý rok do dôchodku. Nie je to v zákone, počíta s možnými budúcimi úpravami.</span></span>
+          <button type="button" class="switch" role="switch" aria-checked="false" aria-labelledby="lbl-sf" id="sw-sf"></button></div>
+      </div>
+    </section>
+
+    <aside class="card goal" aria-labelledby="goal-h">
+      <div class="card-head"><h2 id="goal-h">Koľko chcem na dôchodku</h2></div>
+      <div id="f-goal"></div>
+      <span class="badge" id="goal-badge">✓ Zachováme životný štandard ako máte dnes</span>
+      <button type="button" class="linkbtn" id="goal-reset" hidden>Vrátiť na môj dnešný príjem</button>
+      <div id="f-trust"></div>
+      <div class="how">
+        <h3>Ako počítame</h3>
+        <ul>
+          <li>Štátny dôchodok odhadujeme podľa vzorca Sociálnej poisťovne z vášho príjmu a odpracovaných rokov.</li>
+          <li id="how-2">Všetky sumy sú v dnešných cenách, takže ich môžete porovnať s tým, čo zarábate teraz.</li>
+          <li id="how-3">Investícia sa každý rok navyšuje o infláciu, aby si zachovala hodnotu.</li>
+        </ul>
+        <button type="button" class="linkbtn" id="method-btn">Celá metodika s vašimi číslami</button>
+      </div>
+    </aside>
+  </div>
+
+  <div class="split">
+    <section class="card" aria-labelledby="chart-h">
+      <div class="card-head"><h3 id="chart-h" style="font-size:17px;">Môj príjem dnes a dôchodok zajtra</h3><p id="chart-note">v dnešných cenách</p></div>
+      <div class="chartbox"><canvas id="chart" aria-label="Porovnanie dnešného príjmu a dôchodku"></canvas></div>
+    </section>
+    <section class="card" aria-labelledby="delay-h">
+      <div class="card-head"><h3 id="delay-h" style="font-size:17px;">Cena odkladania</h3></div>
+      <div class="tablewrap"><table><thead><tr><th>Začnem</th><th>Mesačne</th><th>Navyše</th></tr></thead><tbody id="delays"></tbody></table></div>
+      <p class="delay-note" id="delay-note">Každý rok čakania skracuje čas, počas ktorého pracuje zložené úročenie.</p>
+    </section>
+  </div>
+
+  <aside class="cta">
+    <div>
+      <h3>Chcem to prebrať osobne</h3>
+      <p>Prejdem s vami výsledok a navrhnem, ako chýbajúcu sumu dosiahnuť.</p>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn-outline" data-open-pdf>Stiahnuť PDF</button>
+      <a class="phone" id="cta-phone" href="tel:+421907675846">+421 907 675 846</a>
+      <a class="primary" id="cta-link" href="https://www.michalkurka.sk/kontakt" target="_blank" rel="noopener">Kontaktujte ma</a>
+    </div>
+  </aside>
+
+  <p class="note" id="disclaimer"></p>
+</main>
+
+<div class="peek" id="peek" aria-hidden="true"><span class="k">Treba investovať mesačne</span><span class="v num" id="pk-v">0 €</span></div>
+
+<div class="overlay" id="method-modal" hidden>
+  <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="method-h">
+    <button type="button" class="modal-x" data-close aria-label="Zavrieť">✕</button>
+    <h2 id="method-h">Ako kalkulačka počíta</h2>
+    <div class="method" id="method-body"></div>
+  </div>
+</div>
+
+<div class="overlay" id="pdf-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pdf-h">
+    <h2 id="pdf-h">Stiahnuť PDF s prepočtom</h2>
+    <p class="lead">Zanechajte mi kontakt a ozvem sa vám s bezplatnou konzultáciou k vášmu dôchodku. Kontakt nie je povinný, PDF si môžete stiahnuť aj bez neho.</p>
+    <div class="advisor"><span class="mono" data-adv="initials">MK</span><div><b data-adv="name">Michal Kurka</b><span data-adv="role" style="display:block;font-size:12.5px;color:var(--muted);"></span><span>Výsledok s vami prejdem a navrhnem konkrétne riešenie.</span></div></div>
+    <form class="form" id="pdf-form" novalidate>
+      <label class="f" for="c-name">Meno a priezvisko <small>(voliteľné, zobrazí sa v PDF)</small><input type="text" id="c-name" autocomplete="name" placeholder="Ján Novák"></label>
+      <label class="f" for="c-email">E-mail<input type="email" id="c-email" autocomplete="email" placeholder="jan.novak@email.sk"></label>
+      <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;"><label>Web <input type="text" id="c-website" tabindex="-1" autocomplete="off"></label></div>
+      <label class="f" for="c-phone">Telefón <small>(voliteľné)</small><input type="tel" id="c-phone" autocomplete="tel" placeholder="+421"></label>
+      <label class="consent" for="c-consent"><input type="checkbox" id="c-consent"><span>Súhlasím so spracovaním osobných údajov na účel kontaktovania a bezplatnej konzultácie. <a id="c-privacy" href="https://www.michalkurka.sk/ochrana-udajov" target="_blank" rel="noopener">Ochrana osobných údajov</a></span></label>
+      <p class="err" id="c-err" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" data-close>Zrušiť</button>
+        <button type="submit" class="btn-main">Odoslať kontakt a vytvoriť PDF</button>
+      </div>
+      <button type="button" class="skip" id="c-skip">alebo vytvoriť PDF bez kontaktu</button>
+    </form>
+  </div>
+</div>
+
+<div class="overlay" id="ready-modal" hidden>
+  <div class="modal center" role="dialog" aria-modal="true" aria-labelledby="ready-h" aria-live="polite">
+    <div class="spinner" id="r-spin"></div>
+    <h2 id="ready-h">Pripravujem PDF…</h2>
+    <p class="lead" id="ready-lead">Chvíľku strpenia, skladám váš prepočet.</p>
+    <p class="status" id="ready-status" hidden></p>
+    <button type="button" class="btn-main accent" id="r-download" hidden style="width:100%;">Stiahnuť PDF</button>
+    <button type="button" class="btn-secondary" data-close>Zavrieť</button>
+  </div>
+</div>
+
+<div class="rep-host" aria-hidden="true"><div class="rep" id="rep"></div></div>
+
+<script src="vendor/chart.umd.min.js"></script>
+<script src="vendor/html2canvas.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="dochodok-config.js"></script>
+<script src="dochodok-calc.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* Logo – čierny monogram MK (PNG, priehľadné pozadie), vložený priamo do súboru. */
+var LOGO_MK = 'data:image/png;base64,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';
+
+/* =================== NASTAVENIA (upraví web firma) =================== */
+var CONFIG = {
+  advisor: {
+    initials: 'MK',
+    name: 'Michal Kurka',
+    company: 'LiNa Capital s.r.o.',
+    title: 'Financial Advisor',
+    phone: '+421 907 675 846',
+    email: 'michal.kurka@simplea.sk',
+    web: 'www.michalkurka.sk',
+    contactUrl: 'https://www.michalkurka.sk/kontakt',
+    logo: LOGO_MK
+  },
+  // Adresa, na ktorú sa pošle kontakt z formulára (POST, JSON). Prázdne = kontakt sa nikam neodošle.
+  contactEndpoint: '/api/kalkulacka-kontakt',
+  privacyUrl: '/ochrana-udajov'
+};
+/* ===================================================================== */
+
+var CFG = window.DOCHODOK_CONFIG, CALC = window.DochodokCalc;
+var S = {
+  type: 'employee', birthYear: 1985, gross: 1800, szcoIncome: 2000, szcoContributions: CFG.szco.minContributions,
+  hasP2: false, p2Saved: 10000, p2EntryYear: 2010, p2Fund: 'indexovy',
+  early: false, monthsEarly: 12, investReturn: CFG.assumptions.investReturn * 100,
+  target: null, inflation: CFG.assumptions.inflation * 100, wageGrowth: CFG.assumptions.wageGrowth * 100,
+  reserveYears: CFG.assumptions.reserveYears, lifeExpToday: CFG.assumptions.lifeExpToday,
+  useSustainability: CFG.sustainabilityDefaultOn,
+  stateTrust: CFG.stateTrust.default * 100,
+  displayMode: CFG.displayMode || 'nominal'
+};
+var DEFAULTS = JSON.parse(JSON.stringify(S));
+var R = null; // posledný výsledok
+
+var eurF = new Intl.NumberFormat('sk-SK',{maximumFractionDigits:0});
+function eur(n){ return isFinite(n) ? eurF.format(Math.round(n)) + ' €' : '–'; }
+function dec(n, d){ return (Math.round(n * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d).replace('.', ','); }
+function pct(n, d){ return dec(n, d == null ? 1 : d) + ' %'; }
+function yw(n){ return n === 1 ? 'rok' : (n >= 2 && n <= 4 ? 'roky' : 'rokov'); }
+function ageText(y, m){ return y + ' r.' + (m ? ' ' + m + ' mes.' : ''); }
+function ageFromTotal(t){ var mm = Math.round(t * 12); return ageText(Math.floor(mm / 12), mm % 12); }
+function esc(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+function parseNum(s){ return parseFloat(String(s).replace(/\s/g,'').replace(',', '.')); }
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+/* ---------------- polia ---------------- */
+var FIELDS = [
+  {key:'birthYear', box:'f-basic', label:'Rok narodenia', unit:'', min:1965, max:2006, step:1, dec:0, plain:true,
+   hint:'Podľa roku narodenia určíme zákonný dôchodkový vek (bez zohľadnenia vychovaných detí).', derived:'d-age'},
+  {key:'gross', box:'f-basic', label:'Hrubá mzda', unit:'€ / mes.', min:0, max:6000, hardMax:30000, step:50, dec:0, show:function(){ return S.type === 'employee'; },
+   hint:'Hrubá mesačná mzda z pracovnej zmluvy. Z nej sa platia odvody, z ktorých sa počíta dôchodok.', derived:'d-net'},
+  {key:'szcoIncome', box:'f-basic', label:'Čistý príjem', unit:'€ / mes.', min:0, max:8000, hardMax:50000, step:50, dec:0, show:function(){ return S.type === 'szco'; },
+   hint:'Koľko vám mesačne reálne zostáva z podnikania. Použijeme ho ako váš dnešný životný štandard.'},
+  {key:'szcoContributions', box:'f-basic', label:'Odvody SP + ZP', unit:'€ / mes.', min:CFG.szco.minContributions, max:2500, hardMax:6000, step:5, dec:2, show:function(){ return S.type === 'szco'; },
+   hint:'Mesačné odvody do Sociálnej a zdravotnej poisťovne spolu. Podľa nich sa určí základ pre dôchodok.', derived:'d-szco'},
+  {key:'p2Saved', box:'f-p2', label:'Nasporené v II. pilieri', unit:'€', min:0, max:100000, hardMax:1000000, step:500, dec:0,
+   hint:'Aktuálny zostatok nájdete vo výpise alebo v aplikácii svojej DSS.'},
+  {key:'p2EntryYear', box:'f-p2', label:'Rok vstupu do II. piliera', unit:'', min:2005, max:2026, step:1, dec:0, plain:true,
+   hint:'Za roky v II. pilieri sa štátny dôchodok kráti podľa § 66 zákona o sociálnom poistení.'},
+  {key:'monthsEarly', box:'f-early', label:'O koľko skôr', unit:'mes.', min:1, max:24, step:1, dec:0,
+   hint:'Predčasný dôchodok sa natrvalo kráti o 0,5 % za každých začatých 30 dní.', derived:'d-early'},
+  {key:'investReturn', box:'f-invest', label:'Zhodnotenie investície', unit:'% ročne', min:0, max:15, step:0.5, dec:1,
+   hint:'Očakávaný priemerný ročný výnos vašej investície pred infláciou. Široké akciové fondy mali dlhodobo približne 7–9 %.'},
+  {key:'inflation', box:'f-adv', label:'Inflácia', unit:'% ročne', min:0, max:10, step:0.1, dec:1, hint:'Cieľ ECB je 2 %, dlhodobý priemer v eurozóne bol okolo 2–3 %.'},
+  {key:'wageGrowth', box:'f-adv', label:'Rast miezd', unit:'% ročne', min:0, max:10, step:0.1, dec:1, hint:'O koľko ročne rastú mzdy. Ovplyvňuje rast dôchodkovej hodnoty aj príspevky do II. piliera.'},
+  {key:'lifeExpToday', box:'f-adv', label:'Dožitie dnes', unit:'rokov', min:70, max:90, step:0.5, dec:1, hint:'Priemerná dĺžka života dnes. Pre budúci dôchodok pripočítame 0,2 roka za každý rok do dôchodku.'},
+  {key:'reserveYears', box:'f-adv', label:'Rezerva dožitia', unit:'rokov', min:0, max:10, step:1, dec:0, hint:'Roky navyše, aby peniaze vystačili aj pri dlhšom živote.'},
+  {key:'stateTrust', box:'f-trust', label:'Koľko verím štátu', unit:'%', min:0, max:100, step:5, dec:0,
+   hint:'Koľko percent z vypočítaného štátneho dôchodku čakáte, že naozaj dostanete. Starnutie populácie naznačuje, že dnešné pravidlá nemusia platiť naveky. II. pilier sa nekráti, sú to vaše vlastné úspory.', derived:'d-trust'},
+  {key:'target', box:'f-goal', label:'Cieľový dôchodok', unit:'€ / mes.', min:0, max:6000, hardMax:30000, step:50, dec:0,
+   hint:'Koľko chcete mesačne mať na dôchodku v dnešných peniazoch. Predvolene je to váš dnešný čistý príjem.'}
+];
+function fmtField(f, v){ return f.plain ? String(Math.round(v)) : (f.dec ? dec(v, f.dec === 2 ? 2 : 1) : eurF.format(Math.round(v))); }
+function buildField(f){
+  var el = document.createElement('div');
+  el.className = 'field';
+  el.innerHTML =
+    '<div class="field-top"><label for="in-'+f.key+'">'+f.label+'</label>'+
+    '<button type="button" class="info" aria-expanded="false" aria-controls="h-'+f.key+'" aria-label="Vysvetlenie: '+f.label+'">i</button></div>'+
+    '<p class="hint" id="h-'+f.key+'" hidden>'+f.hint+'</p>'+
+    '<div class="entry"><button type="button" data-dir="-1" aria-label="Menej">−</button>'+
+      '<div class="box"><input id="in-'+f.key+'" inputmode="decimal" autocomplete="off"><span class="unit">'+f.unit+'</span></div>'+
+      '<button type="button" data-dir="1" aria-label="Viac">+</button></div>'+
+    '<input type="range" id="sl-'+f.key+'" min="'+f.min+'" max="'+f.max+'" step="'+f.step+'" aria-label="'+f.label+'">'+
+    (f.derived ? '<p class="derived" id="'+f.derived+'"></p>' : '');
+  document.getElementById(f.box).appendChild(el);
+  var input = el.querySelector('input:not([type=range])'), slider = el.querySelector('input[type=range]'), info = el.querySelector('.info'), hint = el.querySelector('.hint');
+  info.addEventListener('click', function(){ var o = info.getAttribute('aria-expanded') !== 'true'; info.setAttribute('aria-expanded', String(o)); hint.hidden = !o; });
+  slider.addEventListener('input', function(){ setVal(f, parseFloat(slider.value), 'slider'); });
+  input.addEventListener('input', function(){ var v = parseNum(input.value); if(!isNaN(v)) setVal(f, v, 'input'); });
+  input.addEventListener('blur', function(){ syncField(f); });
+  input.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowUp' || e.key === 'ArrowDown'){ e.preventDefault(); setVal(f, current(f) + (e.key === 'ArrowUp' ? 1 : -1) * f.step); }
+  });
+  el.querySelectorAll('[data-dir]').forEach(function(b){ b.addEventListener('click', function(){ setVal(f, current(f) + Number(b.dataset.dir) * f.step); }); });
+  f.el = el; f.input = input; f.slider = slider;
+}
+function current(f){ return f.key === 'target' && S.target == null ? (R ? R.income : 0) : S[f.key]; }
+function clamp(f, v){
+  var hi = f.hardMax != null ? f.hardMax : f.max;
+  v = Math.min(hi, Math.max(f.min, v));
+  return f.dec === 2 ? Math.round(v * 100) / 100 : (f.dec ? Math.round(v * 10) / 10 : Math.round(v));
+}
+function setVal(f, v, source){
+  S[f.key] = clamp(f, v);
+  syncField(f, source);
+  update();
+}
+function syncField(f, source){
+  var v = current(f);
+  if(source !== 'input') f.input.value = fmtField(f, v);
+  if(source !== 'slider') f.slider.value = Math.min(f.max, v);
+  f.slider.style.setProperty('--p', ((Math.min(f.max, v) - f.min) / (f.max - f.min) * 100) + '%');
+}
+function syncAll(){ FIELDS.forEach(function(f){ syncField(f); }); }
+
+/* ---------------- segmenty a prepínače ---------------- */
+function segment(selector, attr, onPick){
+  document.querySelectorAll(selector).forEach(function(b){
+    b.addEventListener('click', function(){ onPick(b.dataset[attr]); });
+  });
+}
+segment('[data-type]', 'type', function(v){ S.type = v; if(S.target == null) {} update(); });
+var fundSeg = document.getElementById('fund-seg');
+Object.keys(CFG.pillar2.funds).forEach(function(k){
+  var f = CFG.pillar2.funds[k], b = document.createElement('button');
+  b.type = 'button'; b.dataset.fund = k;
+  b.innerHTML = f.label.split(' (')[0] + '<small>' + pct(f.rate * 100) + ' p. a.</small>';
+  fundSeg.appendChild(b);
+});
+segment('[data-fund]', 'fund', function(v){ S.p2Fund = v; update(); });
+function bindSwitch(id, key){
+  var sw = document.getElementById(id);
+  sw.addEventListener('click', function(){ S[key] = !S[key]; update(); });
+}
+bindSwitch('sw-p2', 'hasP2'); bindSwitch('sw-early', 'early'); bindSwitch('sw-sf', 'useSustainability');
+document.getElementById('more-btn').addEventListener('click', function(){
+  var b = this, o = b.getAttribute('aria-expanded') !== 'true';
+  b.setAttribute('aria-expanded', String(o)); document.getElementById('adv-box').hidden = !o;
+});
+document.getElementById('goal-reset').addEventListener('click', function(){ S.target = null; update(); });
+
+segment('[data-mode]', 'mode', function(v){ S.displayMode = v; update(); });
+
+/* Sumy podľa zvoleného zobrazenia: s infláciou (budúce ceny, pevná investícia) alebo v dnešných cenách */
+function view(r){
+  var nom = S.displayMode === 'nominal', n = r.nominal;
+  return {nom: nom, year: Math.floor(r.retirementYear),
+    monthly: nom ? n.monthly : r.monthly, p1: nom ? n.p1 : r.p1, p1Model: nom ? n.p1Model : r.p1Model,
+    p2: nom ? n.p2 : r.p2.monthly, pension: nom ? n.pension : r.pension, target: nom ? n.target : r.target,
+    gap: nom ? n.gap : r.gap, capital: nom ? n.capital : r.capital, delays: nom ? n.delays : r.delays};
+}
+
+/* ---------------- výpočet a zobrazenie ---------------- */
+function calcInput(st){
+  return {
+    type: st.type, birthYear: st.birthYear, gross: st.gross, szcoIncome: st.szcoIncome, szcoContributions: st.szcoContributions,
+    hasP2: st.hasP2, p2Saved: st.p2Saved, p2EntryYear: st.p2EntryYear, p2Fund: st.p2Fund,
+    early: st.early, monthsEarly: st.monthsEarly, investReturn: st.investReturn / 100, target: st.target,
+    inflation: st.inflation / 100, wageGrowth: st.wageGrowth / 100, reserveYears: st.reserveYears,
+    lifeExpToday: st.lifeExpToday, useSustainability: st.useSustainability, stateTrust: st.stateTrust / 100
+  };
+}
+function update(){
+  R = CALC.compute(calcInput(S), CFG);
+  // viditeľnosť polí
+  FIELDS.forEach(function(f){ if(f.show) f.el.hidden = !f.show(); });
+  document.querySelectorAll('[data-type]').forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.type === S.type)); });
+  document.querySelectorAll('[data-fund]').forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.fund === S.p2Fund)); });
+  [['sw-p2','hasP2','p2-box'],['sw-early','early','early-box'],['sw-sf','useSustainability',null]].forEach(function(x){
+    document.getElementById(x[0]).setAttribute('aria-checked', String(!!S[x[1]]));
+    if(x[2]) document.getElementById(x[2]).hidden = !S[x[1]];
+  });
+  var tf = FIELDS.filter(function(f){ return f.key === 'target'; })[0];
+  syncField(tf);
+  document.getElementById('goal-badge').hidden = !R.targetAuto;
+  document.getElementById('goal-reset').hidden = R.targetAuto;
+
+  // odvodené texty
+  var ra = R.retirementAge;
+  document.getElementById('d-age').innerHTML = 'Zákonný dôchodkový vek: <b>' + ageText(ra.years, ra.months) + '</b> · odchod: <b>' + Math.floor(S.birthYear + ra.total) + '</b>';
+  if(R.wage) document.getElementById('d-net').innerHTML = 'Čistá mzda približne <b>' + eur(R.wage.net) + '</b> mesačne';
+  document.getElementById('d-szco').innerHTML = 'Minimum v roku ' + CFG.currentYear + ': <b>' + dec(CFG.szco.minContributions, 2) + ' €</b> · základ pre dôchodok <b>' + eur(R.assessmentBase) + '</b>';
+  document.querySelectorAll('[data-trust]').forEach(function(b){ b.setAttribute('aria-pressed', String(Number(b.dataset.trust) === S.stateTrust)); });
+  document.getElementById('d-trust').innerHTML = R.stateTrust >= 1
+    ? 'Počítame s celým vypočítaným štátnym dôchodkom <b>' + eur(R.p1Model) + '</b>.'
+    : (R.stateTrust <= 0 ? 'So štátnym dôchodkom nepočítame vôbec, celý cieľ pokryjú vaše úspory.' : 'Počítame so štátnym dôchodkom <b>' + eur(R.p1) + '</b> z vypočítaných ' + eur(R.p1Model) + (S.displayMode === 'nominal' ? ' (v dnešných cenách)' : '') + '.');
+  document.getElementById('d-early').innerHTML = 'Odchod vo veku <b>' + ageFromTotal(R.retireAge) + '</b> (' + Math.floor(R.retirementYear) + ') · krátenie <b>' + pct((1 - R.earlyFactor) * 100) + '</b>';
+
+  // hlavný výsledok
+  var V = view(R);
+  document.querySelectorAll('[data-mode]').forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.mode === S.displayMode)); });
+  document.getElementById('r-lbl').textContent = V.nom ? 'Mesačne investovať (stále rovnaká suma)' : 'Už dnes treba mesačne investovať';
+  document.getElementById('how-2').textContent = V.nom
+    ? 'Sumy sú v budúcich peniazoch, teda koľko budete reálne potrebovať v roku odchodu. Cieľ zadávate v dnešných peniazoch, infláciu dopočítame.'
+    : 'Všetky sumy sú v dnešných cenách, takže ich môžete porovnať s tým, čo zarábate teraz.';
+  document.getElementById('how-3').textContent = V.nom
+    ? 'Mesačná investícia je pevná suma, nemusíte ju navyšovať.'
+    : 'Investícia sa každý rok navyšuje o infláciu, aby si zachovala hodnotu.';
+  document.getElementById('chart-note').textContent = V.nom ? 'porovnanie v dnešných cenách' : 'v dnešných cenách';
+  document.getElementById('delay-note').textContent = V.nom
+    ? 'Pevná mesačná suma pri neskoršom začiatku. Každý rok čakania skracuje čas, počas ktorého pracuje zložené úročenie.'
+    : 'Každý rok čakania skracuje čas, počas ktorého pracuje zložené úročenie.';
+  var m = V.monthly;
+  var mTxt = !isFinite(m) ? 'nestihnete' : eur(m);
+  document.getElementById('r-monthly').textContent = mTxt;
+  var pk = document.getElementById('pk-v'); if(pk) pk.textContent = mTxt; // pruh na mobile (vo vloženom režime chýba)
+  var sentence;
+  if(R.gap <= 0) sentence = 'Podľa modelu vám štátny dôchodok' + (S.hasP2 ? ' s II. pilierom' : '') + ' pokryje cieľ <b>' + eur(V.target) + '</b> mesačne. Investovať navyše nemusíte, ale rezerva nikdy nie je na škodu.';
+  else if(!isFinite(m)) sentence = 'Do dôchodku vám zostáva príliš málo času na nasporenie chýbajúcich <b>' + eur(V.gap) + '</b> mesačne. Riešenie má zmysel prebrať osobne.';
+  else if(V.nom) sentence = 'Váš cieľ ' + eur(R.target) + ' v dnešných peniazoch bude v roku ' + V.year + ' zodpovedať približne <b>' + eur(V.target) + '</b> mesačne. ' +
+    (R.stateTrust < 1 ? 'Pri dôvere v štát ' + Math.round(R.stateTrust * 100) + ' % počítame s dôchodkom <b>' : 'Štát vám dá podľa modelu približne <b>') + eur(V.pension) + '</b>' + (S.hasP2 ? ' aj s II. pilierom' : '') +
+    ', chýba <b>' + eur(V.gap) + '</b> mesačne. Na ' + Math.round(R.payoutYears) + ' rokov dôchodku treba nasporiť <b>' + eur(V.capital) + '</b>, čo pri výnose ' + pct(S.investReturn) + ' zvládnete pevnou sumou vyššie.';
+  else sentence = (R.stateTrust < 1 ? 'Štátu veríte na ' + Math.round(R.stateTrust * 100) + ' %, počítame preto s dôchodkom <b>' + eur(R.pension) + '</b> mesačne' : 'Štát vám dá podľa modelu približne <b>' + eur(R.pension) + '</b> mesačne') + (S.hasP2 ? ' aj s II. pilierom' : '') + '. Do cieľa <b>' + eur(R.target) + '</b> chýba <b>' + eur(R.gap) + '</b> mesačne počas približne ' + Math.round(R.payoutYears) + ' rokov dôchodku. Investíciu stačí každý rok navýšiť o infláciu.';
+  document.getElementById('r-sentence').innerHTML = sentence;
+  document.getElementById('t-p1').textContent = eur(V.p1);
+  var p1s = [];
+  if(R.stateTrust < 1) p1s.push('dôvera ' + Math.round(R.stateTrust * 100) + ' % z ' + eur(V.p1Model));
+  if(S.hasP2) p1s.push('+ II. pilier ' + eur(V.p2));
+  document.getElementById('t-p1s').textContent = p1s.length ? p1s.join(' · ') : (V.nom ? 'mesačne, v cenách roku ' + V.year : 'mesačne, v dnešných cenách');
+  document.getElementById('t-gap').textContent = eur(V.gap);
+  document.getElementById('t-gaps').textContent = 'do cieľa ' + eur(V.target) + (V.nom ? ' (' + V.year + ')' : '');
+  document.getElementById('t-cap').textContent = eur(V.capital);
+  document.getElementById('t-caps').textContent = 'na ' + Math.round(R.payoutYears) + ' rokov dôchodku' + (V.nom ? ', v cenách ' + V.year : '');
+  document.getElementById('t-ret').textContent = Math.floor(R.retirementYear);
+  document.getElementById('t-rets').textContent = 'vo veku ' + ageFromTotal(R.retireAge) + ', o ' + Math.round(R.yearsToRetire) + ' ' + yw(Math.round(R.yearsToRetire));
+
+  renderDelays();
+  drawChart();
+  postHeight();
+}
+function delayLabel(d){ return d === 0 ? 'Dnes' : 'O ' + d + ' ' + yw(d); }
+function renderDelays(){
+  var D = view(R).delays;
+  var max = Math.max.apply(null, D.map(function(d){ return isFinite(d.monthly) ? d.monthly : 0; })) || 1;
+  document.getElementById('delays').innerHTML = D.map(function(d){
+    var fin = isFinite(d.monthly);
+    return '<tr class="' + (d.delay === 0 ? 'now' : '') + '"><td>' + delayLabel(d.delay) + '</td>' +
+      '<td>' + (fin ? eur(d.monthly) : 'nestihnete') + (fin ? '<div class="meter"><i style="width:' + (d.monthly / max * 100) + '%"></i></div>' : '') + '</td>' +
+      '<td class="' + (d.delay ? 'more-cost' : '') + '">' + (d.delay === 0 ? '–' : (fin && isFinite(d.extra) ? '+' + eur(d.extra) + '<br><small>+' + Math.round(d.extraPct * 100) + ' %</small>' : '–')) + '</td></tr>';
+  }).join('');
+}
+
+/* ---------------- graf ---------------- */
+var chart = null;
+function chartConfig(r, forPdf){
+  var ink = '#202325', muted = '#66707C', line = '#E1E6E9';
+  return {
+    data: {labels: ['Dnes', 'Na dôchodku'], datasets: [
+      {type:'bar', label:'Príjem dnes', data:[Math.round(r.income), 0], backgroundColor:cssVar('--c-income'), stack:'s', borderRadius:6, order:2},
+      {type:'bar', label:'Štátny dôchodok', data:[0, Math.round(r.p1)], backgroundColor:cssVar('--c-p1'), stack:'s', order:2},
+      {type:'bar', label:'II. pilier', data:[0, Math.round(r.p2.monthly)], backgroundColor:cssVar('--c-p2'), stack:'s', order:2},
+      {type:'bar', label:'Chýba', data:[0, Math.round(r.gap)], backgroundColor:'rgba(224,122,106,.85)', borderColor:cssVar('--c-gap'), borderWidth:{top:0,left:0,right:0,bottom:0}, stack:'s', borderRadius:{topLeft:6, topRight:6}, order:2},
+      {type:'line', label:'Cieľ', data:[Math.round(r.target), Math.round(r.target)], borderColor:cssVar('--c-target'), backgroundColor:cssVar('--c-target'), borderWidth:3, borderDash:[7,5], pointRadius:5, pointHoverRadius:6, order:0}
+    ].filter(function(ds){ return ds.label !== 'II. pilier' || S.hasP2; })},
+    options: {
+      responsive: !forPdf, maintainAspectRatio: false, animation: forPdf ? false : {duration:250}, devicePixelRatio: forPdf ? 2 : undefined,
+      scales: {
+        x: {stacked:true, grid:{display:false}, ticks:{color:ink, font:{family:'Monda', size:13}}},
+        y: {stacked:true, beginAtZero:true, grid:{color:line}, border:{display:false}, ticks:{color:muted, maxTicksLimit:6, font:{family:'Monda', size:11}, callback:function(v){ return eurF.format(v) + ' €'; }}}
+      },
+      plugins: {
+        legend: {position:'bottom', labels:{color:ink, usePointStyle:true, pointStyle:'rectRounded', boxWidth:10, padding:14, font:{family:'Monda', size:12},
+          filter:function(item, data){ return true; }}},
+        tooltip: {enabled: !forPdf, backgroundColor:'#202325', titleFont:{family:'Monda'}, bodyFont:{family:'Monda'}, padding:10,
+          filter:function(c){ return c.parsed.y > 0; },
+          callbacks:{label:function(c){ return ' ' + c.dataset.label + ': ' + eur(c.parsed.y); }}}
+      }
+    }
+  };
+}
+function drawChart(){
+  if(typeof Chart === 'undefined') return;
+  if(chart){ chart.destroy(); chart = null; }
+  chart = new Chart(document.getElementById('chart'), chartConfig(R, false));
+}
+
+/* ---------------- metodika ---------------- */
+function methodHtml(r){
+  var a = r.assumptions, isEmp = S.type === 'employee';
+  var p2 = S.hasP2;
+  return '' +
+  '<section><h3>1 · Dôchodkový vek</h3><p>Podľa roku narodenia ' + S.birthYear + ' je zákonný vek <b>' + ageText(r.retirementAge.years, r.retirementAge.months) + '</b>' +
+    (r.monthsEarly ? ', vy chcete odísť o ' + r.monthsEarly + ' mes. skôr, teda vo veku ' + ageFromTotal(r.retireAge) : '') + '. Do dôchodku vám zostáva približne ' + dec(r.yearsToRetire, 1) + ' roka. ' +
+    'Pre ročníky po roku 1966 je vek naviazaný na strednú dĺžku života, preto ho odhadujeme. Vychované deti vek znižujú, kalkulačka s nimi nepočíta.</p></section>' +
+  '<section><h3>2 · Štátny dôchodok (I. pilier)</h3><p>Sociálna poisťovňa počíta dôchodok ako súčin troch čísel: koľko ste zarábali v pomere k priemeru (POMB), koľko rokov ste pracovali (ODP) a aktuálnej dôchodkovej hodnoty (ADH).</p>' +
+    '<div class="f">POMB = ' + eur(r.assessmentBase) + ' / ' + eur(CFG.averageWage) + ' = ' + dec(r.pomb, 3) + (r.assessmentBase / CFG.averageWage > CFG.pomb.threshold ? ' (nad 1,25 sa započíta 68 %)' : '') + '</div>' +
+    '<div class="f">ODP = ' + ageFromTotal(r.retireAge) + ' − ' + CFG.workStartAge + ' r. = ' + dec(r.odp, 1) + ' roka</div>' +
+    '<div class="f">ADH v čase odchodu (v dnešných cenách) = ' + dec(CFG.adh, 4) + ' € × rast o 95 % miezd mínus inflácia = ' + dec(r.adhReal, 2) + ' €</div>' +
+    '<div class="f">Dôchodok = ' + dec(r.pomb, 3) + ' × ' + dec(r.odp, 1) + ' × ' + dec(r.adhReal, 2) + ' € = ' + eur(r.p1Base) + '</div>' +
+    (p2 ? '<p>Za ' + r.p2Years + ' rokov v II. pilieri sa štátny dôchodok kráti podľa § 66 zákona o sociálnom poistení o ' + eur(r.p2Cut) + '.</p>' : '') +
+    (r.monthsEarly ? '<p>Predčasný odchod znižuje dôchodok natrvalo o ' + pct((1 - r.earlyFactor) * 100) + '.</p>' : '') +
+    (r.useSustainability ? '<p>Opatrnejší odhad: dôchodok znižujeme o 1 % za každý rok do dôchodku (spolu ' + pct((1 - r.sfFactor) * 100) + '). V zákone to nie je, počítame s možnými budúcimi úpravami systému. V Rozšírenom prepočte sa dá vypnúť.</p>' : '') +
+    (r.stateTrust < 1 ? '<div class="f">Vypočítaný štátny dôchodok ≈ ' + eur(r.p1Model) + ' mesačne</div><p style="margin-top:6px;">Štátu veríte na ' + Math.round(r.stateTrust * 100) + ' %. Je to váš odhad, či sa dnešné pravidlá vzhľadom na starnutie populácie udržia. II. pilier sa nekráti, sú to vaše vlastné úspory.</p>' : '') +
+    '<div class="f">' + (r.stateTrust < 1 ? 'Započítame ' + Math.round(r.stateTrust * 100) + ' % = ' : 'Štátny dôchodok ≈ ') + eur(r.p1) + ' mesačne</div></section>' +
+  (p2 ? '<section><h3>3 · II. pilier</h3><p>K dnešným ' + eur(S.p2Saved) + ' pripočítavame ' + CFG.pillar2.rateFuture + ' % z hrubého príjmu ročne a výnos fondu ' + pct(CFG.pillar2.funds[S.p2Fund].rate * 100) + '. Od 50 rokov sa každý rok 4 % úspor presúva do garantovaného fondu. Pri odchode odpočítame 10 % a zvyšok sa vypláca ako doživotný dôchodok počas približne ' + Math.round(r.p2.payoutYears) + ' rokov s úrokom 1 %.</p>' +
+    '<div class="f">Nasporené v čase odchodu ≈ ' + eur(r.p2.capital) + ' (v dnešných cenách) → ' + eur(r.p2.monthly) + ' mesačne</div></section>' : '') +
+  '<section><h3>' + (p2 ? '4' : '3') + ' · Koľko chýba a aký kapitál treba</h3>' +
+    '<div class="f">Chýba = ' + eur(r.target) + ' − ' + eur(r.pension) + ' = ' + eur(r.gap) + ' mesačne</div>' +
+    '<p>Dožitie odhadujeme na ' + dec(a.lifeExpToday, 1) + ' r. + 0,2 roka za každý rok do dôchodku = ' + dec(r.lifeExp, 1) + ' r., k tomu ' + a.reserveYears + ' roky rezervy. Peniaze teda majú vystačiť na ' + dec(r.payoutYears, 1) + ' roka.</p>' +
+    '<div class="f">Kapitál = ' + eur(r.gap) + ' × 12 × ' + dec(r.payoutYears, 1) + ' = ' + eur(r.capital) + '</div></section>' +
+  (S.displayMode === 'nominal'
+    ? '<section><h3>' + (p2 ? '5' : '4') + ' · Koľko investovať (s infláciou)</h3><p>Potrebný kapitál prepočítame na peniaze v roku odchodu: pri inflácii ' + pct(S.inflation) + ' za ' + dec(r.yearsToRetire, 1) + ' roka stúpnu ceny ' + dec(r.nominal.factor, 2).replace('.', ',') + '-krát.</p>' +
+      '<div class="f">Kapitál v roku ' + Math.floor(r.retirementYear) + ' = ' + eur(r.capital) + ' × ' + dec(r.nominal.factor, 3) + ' = ' + eur(r.nominal.capital) + '</div>' +
+      '<p style="margin-top:6px;">Potom hľadáme pevnú mesačnú sumu, ktorá ho pri výnose ' + pct(S.investReturn) + ' nasporí. Sumu netreba navyšovať.</p>' +
+      '<div class="f">Investícia = Kapitál × r ÷ ((1 + r)<sup>n</sup> − 1) = ' + (isFinite(r.nominal.monthly) ? eur(r.nominal.monthly) : 'nedá sa stihnúť') + ' mesačne</div>' +
+      '<p style="margin-top:6px;">r je mesačný výnos, n je počet mesiacov do dôchodku. Pre porovnanie: ak by ste investíciu každý rok navyšovali o infláciu, stačilo by začať s ' + (isFinite(r.monthly) ? eur(r.monthly) : '–') + ' mesačne.</p></section>'
+    : '<section><h3>' + (p2 ? '5' : '4') + ' · Koľko investovať</h3><p>Hľadáme mesačnú sumu, ktorá pri výnose ' + pct(S.investReturn) + ' za ' + dec(r.yearsToRetire, 1) + ' roka nasporí potrebný kapitál. Počítame v dnešných cenách, teda s výnosom očisteným o infláciu ' + pct(S.inflation) + '. Prakticky to znamená, že investovanú sumu každý rok navýšite o infláciu.</p>' +
+      '<div class="f">Investícia = Kapitál × r ÷ ((1 + r)<sup>n</sup> − 1) = ' + (isFinite(r.monthly) ? eur(r.monthly) : 'nedá sa stihnúť') + ' mesačne</div>' +
+      '<p style="margin-top:6px;">r je mesačný reálny výnos, n je počet mesiacov do dôchodku. Pre porovnanie: pevná suma bez navyšovania by bola ' + (isFinite(r.nominal.monthly) ? eur(r.nominal.monthly) : '–') + ' mesačne.</p></section>') +
+  '<section><h3>Dôležité</h3><p>Ide o modelový výpočet podľa pravidiel platných v ' + CFG.validFor + '. ' + (isEmp ? 'Čistú mzdu počítame orientačne bez detí a bez ďalších odpočtov. ' : 'Základ pre dôchodok SZČO odvodzujeme z výšky odvodov. ') + 'Skutočný dôchodok závisí od reálnych príjmov a budúcich zmien zákonov.</p></section>';
+}
+var methodModal = document.getElementById('method-modal');
+document.getElementById('method-btn').addEventListener('click', function(){
+  document.getElementById('method-body').innerHTML = methodHtml(R);
+  openModal(methodModal);
+});
+
+/* ---------------- texty ---------------- */
+document.getElementById('disclaimer').textContent = 'Modelový výpočet podľa legislatívy SR platnej v ' + CFG.validFor + '. Nie je investičným odporúčaním ani záväznou ponukou. Skutočný dôchodok závisí od reálnych príjmov a budúcich zmien zákonov. Výnosy investícií nie sú zaručené, hodnota investície môže klesať aj rásť. Zdroje: Sociálna poisťovňa, zákon č. 461/2003 Z. z., Finančná správa SR, ADSS.';
+var A = CONFIG.advisor;
+document.getElementById('cta-phone').textContent = A.phone;
+document.getElementById('cta-phone').href = 'tel:' + A.phone.replace(/\s/g, '');
+document.getElementById('cta-link').href = A.contactUrl;
+
+/* ---------------- okná ---------------- */
+var lastFocus = null, lastModalTop = 0;
+var embeddedPage = (function(){ try{ return window.self !== window.top; }catch(e){ return true; } })();
+function openModal(m){
+  var trigger = document.activeElement;
+  if(!m.contains(trigger)) lastFocus = trigger;
+  m.hidden = false;
+  if(embeddedPage){
+    // Vo vloženej kalkulačke (iframe s plnou výškou) zobrazíme okno pri mieste, kde klient práve je.
+    var t = trigger && trigger.getBoundingClientRect && trigger !== document.body ? trigger.getBoundingClientRect().top + window.scrollY - 140 : lastModalTop;
+    lastModalTop = Math.max(16, t);
+    m.classList.add('embedded');
+    m.style.height = document.documentElement.scrollHeight + 'px';
+    var box = m.querySelector('.modal');
+    var docH = document.documentElement.scrollHeight;
+    lastModalTop = Math.max(16, Math.min(lastModalTop, docH - box.offsetHeight - 16));
+    box.style.marginTop = lastModalTop + 'px';
+    box.style.maxHeight = 'none';
+    try{ box.scrollIntoView({block: 'nearest'}); }catch(e){}
+  }
+  var f = m.querySelector('input,button.btn-main,button'); if(f) f.focus({preventScroll: embeddedPage});
+}
+function closeModal(m){ m.hidden = true; if(lastFocus && lastFocus.focus) lastFocus.focus(); }
+var pdfModal = document.getElementById('pdf-modal'), readyModal = document.getElementById('ready-modal');
+[pdfModal, readyModal, methodModal].forEach(function(m){
+  m.addEventListener('click', function(e){ if(e.target === m || e.target.closest('[data-close]')) closeModal(m); });
+});
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Escape') return;
+  [readyModal, pdfModal, methodModal].some(function(m){ if(!m.hidden){ closeModal(m); return true; } return false; });
+});
+
+/* ---------------- PDF a kontakt ---------------- */
+var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+var downloadsCap = null; // používa sa len v náhľade na claude.ai, na webe zostáva prázdne
+var pdfBlob = null, pdfName = '';
+
+document.querySelectorAll('[data-adv="initials"]').forEach(function(e){
+  if(A.logo){ var img = document.createElement('img'); img.className = 'adv-logo'; img.src = A.logo; img.alt = 'Logo ' + A.name; e.replaceWith(img); }
+  else e.textContent = A.initials;
+});
+document.querySelectorAll('[data-adv="name"]').forEach(function(e){ e.textContent = A.name; });
+document.querySelectorAll('[data-adv="role"]').forEach(function(e){ e.textContent = A.title + ' · ' + A.company; });
+document.getElementById('c-privacy').href = CONFIG.privacyUrl;
+document.querySelectorAll('[data-open-pdf]').forEach(function(b){
+  b.addEventListener('click', function(){ document.getElementById('c-err').hidden = true; openModal(pdfModal); });
+});
+function formError(msg){ var e = document.getElementById('c-err'); e.textContent = msg; e.hidden = false; }
+document.getElementById('pdf-form').addEventListener('submit', function(e){
+  e.preventDefault();
+  var name = document.getElementById('c-name').value.trim(), email = document.getElementById('c-email').value.trim(), phone = document.getElementById('c-phone').value.trim();
+  if(phone.replace(/[\s+]/g,'') === '421') phone = '';
+  if(!email && !phone) return formError('Vyplňte e-mail alebo telefón, aby som sa vám mohol ozvať. Prípadne zvoľte PDF bez kontaktu.');
+  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return formError('Skontrolujte, prosím, e-mailovú adresu.');
+  if(phone && phone.replace(/\D/g,'').length < 9) return formError('Skontrolujte, prosím, telefónne číslo.');
+  if(!document.getElementById('c-consent').checked) return formError('Na odoslanie kontaktu je potrebný súhlas so spracovaním údajov.');
+  pdfModal.hidden = true;
+  startPdf(name, sendContact({name: name, email: email, phone: phone}));
+});
+document.getElementById('c-skip').addEventListener('click', function(){ pdfModal.hidden = true; startPdf(document.getElementById('c-name').value.trim(), null); });
+
+function sendContact(person){
+  if(!CONFIG.contactEndpoint) return Promise.resolve('not-configured');
+  var payload = {
+    source: 'dochodkova-kalkulacka', createdAt: new Date().toISOString(),
+    name: person.name, email: person.email, phone: person.phone, consent: true,
+    consentText: 'Súhlasím so spracovaním osobných údajov na účel kontaktovania a bezplatnej konzultácie.',
+    website: document.getElementById('c-website').value,
+    inputs: {type: S.type, birthYear: S.birthYear, grossWage: S.type === 'employee' ? S.gross : null,
+      szcoIncome: S.type === 'szco' ? S.szcoIncome : null, szcoContributions: S.type === 'szco' ? S.szcoContributions : null,
+      pillar2: S.hasP2 ? {saved: S.p2Saved, entryYear: S.p2EntryYear, fund: S.p2Fund} : null,
+      monthsEarly: R.monthsEarly, investReturnPercent: S.investReturn, targetPension: Math.round(R.target), stateTrustPercent: S.stateTrust},
+    results: {retirementYear: Math.floor(R.retirementYear), statePensionModel: Math.round(R.p1Model), statePension: Math.round(R.p1), pillar2Pension: Math.round(R.p2.monthly),
+      gap: Math.round(R.gap), capital: Math.round(R.capital), monthlyInvestment: isFinite(R.monthly) ? Math.round(R.monthly) : null,
+      displayMode: S.displayMode, capitalNominal: Math.round(R.nominal.capital), monthlyInvestmentFixed: isFinite(R.nominal.monthly) ? Math.round(R.nominal.monthly) : null}
+  };
+  var ctrl = ('AbortController' in window) ? new AbortController() : null;
+  var t = setTimeout(function(){ if(ctrl) ctrl.abort(); }, 12000);
+  return fetch(CONFIG.contactEndpoint, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload), signal: ctrl ? ctrl.signal : undefined})
+    .then(function(res){ clearTimeout(t); return res.ok ? 'sent' : 'failed'; })
+    .catch(function(){ clearTimeout(t); return 'failed'; });
+}
+function setReady(state, contactState){
+  var h = document.getElementById('ready-h'), lead = document.getElementById('ready-lead'), st = document.getElementById('ready-status'), dl = document.getElementById('r-download');
+  document.getElementById('r-spin').hidden = state !== 'working';
+  dl.hidden = state !== 'ready';
+  if(state === 'working'){ h.textContent = 'Pripravujem PDF…'; lead.textContent = 'Chvíľku strpenia, skladám váš prepočet.'; st.hidden = true; return; }
+  if(state === 'error'){ h.textContent = 'PDF sa nepodarilo vytvoriť'; lead.textContent = 'Skúste to, prosím, znova. Ak problém pretrváva, skúste iný prehliadač.'; }
+  if(state === 'ready'){ h.textContent = 'Váš prepočet je pripravený'; lead.textContent = isMobile ? 'Ťuknite na tlačidlo nižšie. Súbor si môžete uložiť alebo poslať ďalej.' : 'Kliknutím nižšie sa PDF stiahne do vášho počítača.'; dl.focus(); }
+  st.hidden = !contactState;
+  if(contactState === 'sent'){ st.className = 'status ok'; st.textContent = 'Ďakujem, váš kontakt som dostal. Ozvem sa vám čo najskôr.'; }
+  else if(contactState === 'failed'){ st.className = 'status warn'; st.textContent = 'Kontakt sa nepodarilo odoslať. Napíšte mi, prosím, na ' + A.email + ' alebo zavolajte na ' + A.phone + '.'; }
+  else if(contactState === 'not-configured'){ st.className = 'status warn'; st.textContent = 'Ukážka: odosielanie kontaktu zatiaľ nie je zapojené, kontakt sa nikam neodoslal.'; }
+}
+function chartImage(){
+  var c = document.createElement('canvas'); c.width = 400; c.height = 330;
+  var ch = new Chart(c, chartConfig(R, true)), url = c.toDataURL('image/png'); ch.destroy();
+  return url;
+}
+function buildReport(name){
+  var r = R, V = view(R), ra = r.retirementAge, date = new Date().toLocaleDateString('sk-SK');
+  var incomeRow = S.type === 'employee'
+    ? '<div class="rep-kv"><span>Hrubá mzda</span><b>' + eur(S.gross) + ' (čistá ≈ ' + eur(r.income) + ')</b></div>'
+    : '<div class="rep-kv"><span>Čistý príjem / odvody</span><b>' + eur(S.szcoIncome) + ' / ' + dec(S.szcoContributions, 2) + ' €</b></div>';
+  document.getElementById('rep').innerHTML =
+    '<div class="rep-head">'+
+      '<div class="rep-brand">' + (A.logo ? '<img class="rep-logo" alt="" src="' + A.logo + '">' : '<span class="mono">' + esc(A.initials) + '</span>') +
+        '<div><b>' + esc(A.name) + (A.company ? ' <span class="co">| ' + esc(A.company) + '</span>' : '') + '</b><span>' + esc(A.title) + '</span></div></div>'+
+      '<div class="rep-title"><h1>Dôchodková kalkulačka</h1><p>Modelový prepočet' + (name ? ' pre <b>' + esc(name) + '</b>' : '') + '</p><p>' + date + '</p></div>'+
+    '</div>'+
+    '<p class="rep-intro">Štátny dôchodok bude pre väčšinu ľudí výrazne nižší než ich dnešný príjem. Čím skôr začnete chýbajúcu sumu dopĺňať vlastnou investíciou, tým menej mesačne potrebujete. Tento prepočet je modelový príklad v dnešných cenách. Rád s vami prejdem konkrétne riešenie.</p>'+
+    '<div class="rep-grid">'+
+      '<div class="rep-box"><h3>Vstupné údaje</h3>'+
+        '<div class="rep-kv"><span>Typ príjmu</span><b>' + (S.type === 'employee' ? 'Zamestnanec' : 'SZČO') + '</b></div>'+
+        '<div class="rep-kv"><span>Rok narodenia</span><b>' + S.birthYear + '</b></div>'+
+        '<div class="rep-kv"><span>Odchod do dôchodku</span><b>' + ageFromTotal(r.retireAge) + ' (' + Math.floor(r.retirementYear) + ')' + (r.monthsEarly ? ', predčasne' : '') + '</b></div>'+
+        incomeRow +
+        '<div class="rep-kv"><span>II. pilier</span><b>' + (S.hasP2 ? eur(S.p2Saved) + ', ' + CFG.pillar2.funds[S.p2Fund].label.split(' (')[0].toLowerCase() : 'nie') + '</b></div>'+
+        '<div class="rep-kv"><span>Dôvera v štátny dôchodok</span><b>' + Math.round(r.stateTrust * 100) + ' %</b></div>'+
+        '<div class="rep-kv"><span>Zhodnotenie investície</span><b>' + pct(S.investReturn) + ' ročne</b></div>'+
+        '<div class="rep-kv"><span>Cieľový dôchodok</span><b>' + eur(r.target) + ' mesačne</b></div>'+
+      '</div>'+
+      '<div class="rep-box rep-res"><h3>' + (V.nom ? 'Mesačne investovať (stále rovnaká suma)' : 'Už dnes treba mesačne investovať') + '</h3>'+
+        '<div class="big">' + (isFinite(V.monthly) ? eur(V.monthly) : 'nestihnete') + ' <small>mesačne</small></div>'+
+        '<div class="sub">' + (V.nom ? 'pevná suma pri výnose ' + pct(S.investReturn) + ' · sumy nižšie v cenách roku ' + V.year : 'v dnešných cenách, sumu každý rok navýšiť o infláciu') + '</div>'+
+        '<div class="rep-tiles">'+
+          '<div><span class="k">Štátny dôchodok' + (r.stateTrust < 1 ? ' (' + Math.round(r.stateTrust * 100) + ' %)' : '') + '</span><span class="v">' + eur(V.p1) + '</span></div>'+
+          '<div><span class="k">II. pilier</span><span class="v">' + (S.hasP2 ? eur(V.p2) : '–') + '</span></div>'+
+          '<div><span class="k">Chýba mesačne</span><span class="v" style="color:var(--c-gap)">' + eur(V.gap) + '</span></div>'+
+          '<div><span class="k">Potrebný kapitál</span><span class="v" style="color:var(--accent)">' + eur(V.capital) + '</span></div>'+
+        '</div></div>'+
+    '</div>'+
+    '<div class="rep-two">'+
+      '<div class="rep-box rep-chart"><h3>Príjem dnes a dôchodok zajtra (dnešné ceny)</h3><img alt="" src="' + chartImage() + '"></div>'+
+      '<div class="rep-box"><h3>Cena odkladania</h3><table><thead><tr><th>Začnem</th><th>Mesačne</th><th>Navyše</th></tr></thead><tbody>' +
+        V.delays.map(function(d){ var fin = isFinite(d.monthly); return '<tr><td>' + delayLabel(d.delay) + '</td><td>' + (fin ? eur(d.monthly) : 'nestihnete') + '</td><td>' + (d.delay && fin && isFinite(d.extra) ? '+' + eur(d.extra) : '–') + '</td></tr>'; }).join('') +
+        '</tbody></table><p style="margin:10px 0 0;font-size:11.5px;color:var(--muted);line-height:1.45;">Štátny dôchodok je odhad podľa vzorca Sociálnej poisťovne' + (r.useSustainability ? ' s opatrnejším predpokladom (−1 % za každý rok do dôchodku)' : '') + '. Dôchodok má vystačiť na ' + Math.round(r.payoutYears) + ' rokov.</p></div>'+
+    '</div>'+
+    '<div class="rep-box"><h3>Predpoklady výpočtu</h3><div class="rep-assume">'+
+      '<span>Inflácia <b>' + pct(S.inflation) + '</b> ročne</span>'+
+      '<span>Rast miezd <b>' + pct(S.wageGrowth) + '</b> ročne</span>'+
+      '<span>Dôchodková hodnota 2026 <b>' + dec(CFG.adh, 4) + ' €</b></span>'+
+      '<span>Odpracované roky <b>' + dec(r.odp, 1) + '</b></span>'+
+      '<span>Dožitie <b>' + dec(r.lifeExp, 1) + ' r.</b> + rezerva ' + r.assumptions.reserveYears + ' r.</span>'+
+      '<span>Opatrnejší odhad štátneho dôchodku <b>' + (r.useSustainability ? 'áno' : 'nie') + '</b></span>'+
+      '<span>Cieľ v dnešných peniazoch <b>' + eur(r.target) + '</b></span>'+
+      '<span>Zobrazenie súm <b>' + (V.nom ? 's infláciou' : 'v dnešných cenách') + '</b></span>'+
+      '<span>' + (V.nom ? 'Pri navyšovaní o infláciu začať s <b>' + (isFinite(r.monthly) ? eur(r.monthly) : '–') + '</b>' : 'Pevná suma bez navyšovania <b>' + (isFinite(r.nominal.monthly) ? eur(r.nominal.monthly) : '–') + '</b>') + '</span>'+
+    '</div></div>'+
+    '<div class="rep-foot"><div><b>' + esc(A.name) + (A.company ? ' · ' + esc(A.company) : '') + '</b><span class="line">' + esc(A.title) + '</span><span class="line">' + esc(A.phone) + ' · ' + esc(A.email) + ' · ' + esc(A.web) + '</span></div>'+
+      '<div class="say">Chcete to prebrať osobne?<br>Konzultácia je bezplatná.</div></div>'+
+    '<p class="rep-disc">Modelový výpočet podľa legislatívy SR platnej v ' + CFG.validFor + '. Nie je investičným odporúčaním ani záväznou ponukou. Skutočný dôchodok závisí od reálnych príjmov a budúcich zmien zákonov. Všetky sumy sú v dnešných cenách (inflácia ' + pct(S.inflation) + ', rast miezd ' + pct(S.wageGrowth) + '). Výnosy investícií nie sú zaručené, hodnota investície môže klesať aj rásť. Zdroje: Sociálna poisťovňa, zákon č. 461/2003 Z. z., Finančná správa SR, ADSS.</p>';
+}
+function makePdf(name){
+  if(typeof html2canvas === 'undefined' || !window.jspdf) return Promise.reject(new Error('kniznice'));
+  buildReport(name);
+  var el = document.getElementById('rep'), imgs = el.querySelectorAll('img');
+  var waitImgs = Promise.all([].map.call(imgs, function(i){ return i.complete ? 1 : new Promise(function(res){ i.onload = i.onerror = res; }); }));
+  return Promise.all([document.fonts ? document.fonts.ready : 1, waitImgs]).then(function(){
+    return html2canvas(el, {scale:2, backgroundColor:'#ffffff', useCORS:true, logging:false, windowWidth:794});
+  }).then(function(canvas){
+    var pdf = new window.jspdf.jsPDF({unit:'mm', format:'a4', orientation:'portrait', compress:true});
+    var W = 210, H = 297, h = canvas.height * W / canvas.width, w = W;
+    if(h > H){ w = W * H / h; h = H; }
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', (W - w) / 2, 0, w, h);
+    pdf.setProperties({title:'Dôchodková kalkulačka – ' + A.name, author: A.name});
+    return pdf.output('blob');
+  });
+}
+function startPdf(name, contactPromise){
+  pdfBlob = null;
+  pdfName = 'Dochodkova-kalkulacka-' + A.initials + '-' + new Date().toISOString().slice(0,10) + '.pdf';
+  setReady('working'); openModal(readyModal);
+  var job = makePdf(name).then(function(b){ pdfBlob = b; return 'ok'; }, function(){ return 'error'; });
+  Promise.all([job, contactPromise || Promise.resolve(null)]).then(function(r){ setReady(r[0] === 'ok' ? 'ready' : 'error', r[1]); });
+}
+function deliver(blob, filename){
+  if(downloadsCap) return downloadsCap.save({filename: filename, data: blob}).catch(function(e){ if(!e || e.code !== 'declined') anchorDownload(blob, filename); });
+  var file = null;
+  try{ file = new File([blob], filename, {type:'application/pdf'}); }catch(e){}
+  if(isMobile && file && navigator.canShare && navigator.canShare({files:[file]})){
+    return navigator.share({files:[file], title:'Dôchodková kalkulačka'}).catch(function(e){ if(!e || e.name !== 'AbortError') anchorDownload(blob, filename); });
+  }
+  anchorDownload(blob, filename);
+}
+function anchorDownload(blob, filename){
+  var url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = filename; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+}
+document.getElementById('r-download').addEventListener('click', function(){ if(pdfBlob) deliver(pdfBlob, pdfName); });
+
+/* ---------------- vloženie do stránky (iframe) a mobilný pruh ---------------- */
+var embedded = (function(){ try{ return window.self !== window.top; }catch(e){ return true; } })();
+var lastH = 0;
+function postHeight(){
+  if(!embedded || !window.parent) return;
+  var h = Math.ceil(document.body.getBoundingClientRect().height); // skutočná výška obsahu (nie okna)
+  if(Math.abs(h - lastH) > 2){ lastH = h; window.parent.postMessage({type: 'mk-calc-height', id: 'dochodok', height: h}, '*'); }
+}
+if(embedded){
+  if('ResizeObserver' in window) new ResizeObserver(postHeight).observe(document.body);
+  // výšku pošleme aj neskôr a na požiadanie, keby stránka webu ešte nepočúvala
+  var resend = function(){ lastH = 0; postHeight(); };
+  window.addEventListener('load', resend);
+  [400, 1200, 3000].forEach(function(ms){ setTimeout(resend, ms); });
+  window.addEventListener('message', function(e){ if(e.data && e.data.type === 'mk-calc-height-request') resend(); });
+}
+var peek = document.getElementById('peek');
+if(embedded) peek.remove();
+else if('IntersectionObserver' in window){
+  new IntersectionObserver(function(en){ peek.classList.toggle('show', !en[0].isIntersecting && en[0].boundingClientRect.top < 0); }).observe(document.getElementById('band'));
+}
+
+/* ---------------- štart ---------------- */
+FIELDS.forEach(buildField);
+(function(){
+  var f = FIELDS.filter(function(x){ return x.key === 'stateTrust'; })[0];
+  var box = document.createElement('div'); box.className = 'chips'; box.setAttribute('role', 'group'); box.setAttribute('aria-label', 'Rýchla voľba dôvery v štát');
+  box.innerHTML = CFG.stateTrust.presets.map(function(t){
+    var v = Math.round(t * 100), txt = v === 0 ? 'Vôbec' : (v === 100 ? 'Úplne' : v + ' %');
+    return '<button type="button" data-trust="' + v + '" aria-pressed="false">' + txt + '</button>';
+  }).join('');
+  f.el.insertBefore(box, f.el.querySelector('.derived'));
+  box.querySelectorAll('[data-trust]').forEach(function(b){ b.addEventListener('click', function(){ setVal(f, Number(b.dataset.trust)); }); });
+})();
+update();
+syncAll();
+})();
+</script>
+</body>
+</html>

@@ -21,10 +21,10 @@ export default function SpolupracePage() {
         {/* Banner background image */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/Untitled-3.svg"
-            alt="Banner background"
+            src="/spolupraca-banner.jpg"
+            alt="Podanie rúk pri spolupráci"
             fill
-            className="object-cover object-[40%_center] md:object-center"
+            className="object-cover object-[60%_center] md:object-center"
             priority
           />
           {/* Dark overlay for better text readability */}

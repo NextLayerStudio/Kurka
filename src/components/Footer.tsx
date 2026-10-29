@@ -81,6 +81,7 @@ export default function Footer() {
                 <li><Link href="/domov" className="text-[#202325] hover:text-[#5ECAD5] transition-colors text-sm md:text-base">Domov</Link></li>
                 <li><Link href="/o-mne" className="text-[#202325] hover:text-[#5ECAD5] transition-colors text-sm md:text-base">O mne</Link></li>
                 <li><Link href="/sluzby" className="text-[#202325] hover:text-[#5ECAD5] transition-colors text-sm md:text-base">Služby</Link></li>
+                <li><Link href="/kalkulacky" className="text-[#202325] hover:text-[#5ECAD5] transition-colors text-sm md:text-base">Kalkulačky</Link></li>
                 <li><Link href="/spoluprace" className="text-[#202325] hover:text-[#5ECAD5] transition-colors text-sm md:text-base">Spolupráca</Link></li>
                 <li><Link href="/blog" className="text-[#202325] hover:text-[#5ECAD5] transition-colors text-sm md:text-base">Blog</Link></li>
               </ul>
@@ -124,6 +125,9 @@ export default function Footer() {
             <div>
               <h3 className="text-[#202325] font-semibold text-base md:text-lg mb-3 md:mb-4">GDPR & Cookies</h3>
               <FooterLegalLinks onOpenCookies={openCookiesModal} />
+              <p className="mt-4 md:mt-6 text-sm md:text-base text-[#202325]">
+                V spolupráci so <span className="font-semibold">Simplea Financial Services</span>
+              </p>
             </div>
           </div>
 

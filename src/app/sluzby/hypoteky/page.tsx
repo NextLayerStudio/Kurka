@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Head from "next/head";
 import ContactFormModal from "../../../components/ContactFormModal";
+import CalculatorCta from "@/components/CalculatorCta";
 
 interface Bank {
   name: string;
@@ -69,7 +70,7 @@ export default function HypotekyPage() {
   return (
     <>
       <Head>
-        <link rel="preload" href="/Hypoteka.svg" as="image" type="image/svg+xml" />
+        <link rel="preload" href="/hypoteky-banner.jpg" as="image" type="image/jpeg" />
       </Head>
       <main className="min-h-screen">
         {/* Contact Modal */}
@@ -122,10 +123,10 @@ export default function HypotekyPage() {
         {/* Banner background image */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/Hypoteka.svg"
-            alt="Banner background"
+            src="/hypoteky-banner.jpg"
+            alt="Ruky držiaci model domu so svietiacim kľúčom"
             fill
-            className="object-cover object-right md:object-cover"
+            className="object-cover object-center"
             priority
           />
           {/* Dark overlay for better text readability */}
@@ -193,13 +194,12 @@ export default function HypotekyPage() {
           <div className="mb-16">
             <div className="relative max-w-4xl mx-auto">
               <Image
-                src="/image.png"
-                alt="Hypotéka - Finančné poradenstvo"
-                width={800}
-                height={600}
-                className="w-full h-auto rounded-xl object-cover"
+                src="/bezpecna-vs-bezna-hypoteka.webp"
+                alt="Porovnanie bežnej a bezpečnej hypotéky – splátka, investícia a zostatok dlhu"
+                width={1200}
+                height={700}
+                className="w-full h-auto rounded-xl object-contain"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl"></div>
             </div>
           </div>
 
@@ -266,6 +266,8 @@ export default function HypotekyPage() {
               </p>
             </article>
           </div>
+
+          <CalculatorCta slug="hypoteka" className="mt-12" />
 
           {/* Simple CTA */}
           <div className="text-center mt-16 pt-8 border-t border-gray-200">

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Návod na inštaláciu</title>
+<meta name="description" content="Ako si pridať aplikáciu Rodinný rozpočet na plochu telefónu alebo počítača.">
+<meta name="theme-color" content="#1B1B1E">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link href="fonts.css" rel="stylesheet">
+<style>
+:root{
+  --bg:#FAFAF8; --card:#FFFFFF; --text:#1C1C1E; --muted:#6B6B6E; --border:#E8E6E1;
+  --accent:#4FA8AE; --accent-dark:#397D82; --accent-soft:#E4F3F3; --dark:#1B1B1E;
+  --radius:14px; --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --font-d:'Monda',sans-serif; --font-b:'Inter',system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141416; --card:#1F1F22; --text:#F1F0ED; --muted:#A3A2A0; --border:#302F33; --accent-soft:#1E3436; --accent-dark:#6CC3C9;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141416; --card:#1F1F22; --text:#F1F0ED; --muted:#A3A2A0; --border:#302F33; --accent-soft:#1E3436; --accent-dark:#6CC3C9;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-b);line-height:1.55;-webkit-font-smoothing:antialiased;}
+h1,h2,h3{font-family:var(--font-d);}
+a{color:var(--accent-dark);}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px;}
+.topbar{background:var(--dark);color:#fff;padding:22px 0 20px;}
+.topbar h1{margin:0;font-size:22px;}
+.topbar p{margin:6px 0 0;color:#B9B9BC;font-size:14px;}
+main{padding:20px 0 40px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px;box-shadow:var(--shadow);}
+.card h2{margin:0 0 10px;font-size:18px;display:flex;align-items:center;gap:8px;}
+.lead{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none;}
+.lead li{background:var(--accent-soft);color:var(--accent-dark);font-size:13px;font-weight:600;padding:5px 10px;border-radius:20px;}
+.steps{counter-reset:step;list-style:none;margin:0;padding:0;}
+.steps li{counter-increment:step;position:relative;padding:0 0 14px 38px;font-size:15px;}
+.steps li:last-child{padding-bottom:0;}
+.steps li::before{
+  content:counter(step);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;
+  background:var(--accent-soft);color:var(--accent-dark);font-weight:700;font-size:13px;
+  display:flex;align-items:center;justify-content:center;font-family:var(--font-d);
+}
+.steps small{display:block;color:var(--muted);font-size:13px;margin-top:2px;}
+.tip{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:8px;padding:10px 12px;font-size:14px;margin-top:14px;}
+.kbd{display:inline-block;border:1px solid var(--border);border-radius:6px;padding:0 6px;font-size:13px;background:var(--bg);white-space:nowrap;}
+.faq h3{font-size:15px;margin:14px 0 2px;}
+.faq h3:first-of-type{margin-top:0;}
+.faq p{margin:0;color:var(--muted);font-size:14px;}
+.cta{display:block;text-align:center;background:var(--accent);color:#fff;text-decoration:none;font-family:var(--font-d);font-weight:700;font-size:16px;padding:14px;border-radius:10px;margin:6px 0 14px;}
+.cta:hover{background:var(--accent-dark);color:#fff;}
+.foot{color:var(--muted);font-size:12px;text-align:center;line-height:1.6;}
+@media print{
+  .topbar{background:none;color:#000;padding:0 0 10px;}
+  .topbar p{color:#444;}
+  .cta{display:none;}
+  .card{box-shadow:none;break-inside:avoid;}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <h1>💶 Rodinný rozpočet – návod na inštaláciu</h1>
+    <p>Ako si aplikáciu pridať na plochu telefónu a začať ju používať</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <a class="cta" href="./">Otvoriť aplikáciu</a>
+
+  <div class="card">
+    <h2>Čo získate</h2>
+    <ul class="lead">
+      <li>zadarmo</li>
+      <li>bez registrácie</li>
+      <li>funguje aj bez internetu</li>
+      <li>vaše údaje zostávajú len vo vašom telefóne</li>
+    </ul>
+    <p style="margin:12px 0 0;font-size:14px;color:var(--muted);">Aplikácia nie je v App Store ani v Google Play. Pridáte si ju priamo z webu a na ploche bude mať vlastnú ikonu ako bežná aplikácia.</p>
+  </div>
+
+  <div class="card">
+    <h2>📱 iPhone a iPad</h2>
+    <ol class="steps">
+      <li>Otvorte odkaz na aplikáciu v prehliadači <b>Safari</b>.
+        <small>Ak ste odkaz otvorili z Facebooku, Instagramu, e-mailu alebo inej aplikácie, najprv zvoľte „Otvoriť v Safari“.</small></li>
+      <li>Ťuknite na ikonu <b>Zdieľať</b> <span class="kbd">⬆︎</span> (štvorček so šípkou nahor).
+        <small>V novších verziách iOS je najprv potrebné ťuknúť na tri bodky <span class="kbd">•••</span> vpravo dole.</small></li>
+      <li>Posuňte ponuku nižšie a ťuknite na <b>Pridať na plochu</b>.</li>
+      <li>Potvrďte tlačidlom <b>Pridať</b> vpravo hore.</li>
+      <li>Aplikáciu odteraz otvárajte <b>z ikony „Rozpočet“ na ploche</b>.</li>
+    </ol>
+    <div class="tip">💡 Aplikáciu vždy otvárajte z plochy, nie zo Safari. Údaje zapísané v Safari a v aplikácii na ploche sa na iPhone ukladajú oddelene.</div>
+  </div>
+
+  <div class="card">
+    <h2>🤖 Android</h2>
+    <ol class="steps">
+      <li>Otvorte odkaz na aplikáciu v prehliadači <b>Chrome</b>.</li>
+      <li>Ťuknite na tri bodky <span class="kbd">⋮</span> vpravo hore.</li>
+      <li>Zvoľte <b>Inštalovať aplikáciu</b> alebo <b>Pridať na plochu</b> a potvrďte.</li>
+      <li>Aplikáciu odteraz otvárajte z ikony na ploche.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>💻 Počítač</h2>
+    <ol class="steps">
+      <li>Otvorte odkaz v prehliadači <b>Chrome</b> alebo <b>Edge</b>.</li>
+      <li>Kliknite na ikonu inštalácie vpravo v paneli s adresou <span class="kbd">⊕</span>, alebo v menu zvoľte <b>Inštalovať aplikáciu</b>.
+        <small>Aplikáciu môžete používať aj priamo v prehliadači. Stačí si stránku uložiť medzi záložky.</small></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>🔒 Vaše údaje</h2>
+    <ol class="steps">
+      <li><b>Všetko sa ukladá iba vo vašom zariadení.</b> Nikam sa neodosiela, nikto iný k údajom nemá prístup a nevidíme ich ani my.</li>
+      <li><b>Raz za čas si spravte zálohu</b> tlačidlom <span class="kbd">💾 Záloha</span> a súbor si uložte, napríklad do aplikácie Súbory, na iCloud alebo Google Disk. Ak telefón stratíte alebo aplikáciu vymažete, záloha je jediná kópia vašich údajov.</li>
+      <li><b>Nový telefón alebo počítač?</b> V pôvodnom zariadení spravte zálohu a v novom ju nahrajte tlačidlom <span class="kbd">📂 Obnoviť</span>.</li>
+    </ol>
+    <div class="tip">💡 Telefón a počítač sa medzi sebou samy nesynchronizujú. Údaje sú vždy len v zariadení, kde ste ich zapísali. Odporúčame zapisovať na jednom zariadení.</div>
+  </div>
+
+  <div class="card faq">
+    <h2>❓ Časté otázky</h2>
+    <h3>Stojí aplikácia niečo?</h3>
+    <p>Nie, je zadarmo a bez reklám.</p>
+    <h3>Potrebujem internet?</h3>
+    <p>Iba pri prvom otvorení. Potom funguje aj offline.</p>
+    <h3>Musím sa registrovať?</h3>
+    <p>Nie. Nie je potrebný žiadny účet, e-mail ani heslo.</p>
+    <h3>Čo ak aplikáciu vymažem z plochy?</h3>
+    <p>Spolu s ňou sa vymažú aj vaše údaje. Preto si pravidelne robte zálohu.</p>
+    <h3>Ako dostanem novú verziu?</h3>
+    <p>Automaticky. Keď aplikáciu otvoríte s pripojením na internet, načíta sa najnovšia verzia. Vaše údaje zostanú zachované.</p>
+  </div>
+
+  <a class="cta" href="./">Otvoriť aplikáciu</a>
+
+  <p class="foot">Aplikácia má informatívny charakter a nie je investičným ani finančným odporúčaním.</p>
+</main>
+
+</body>
+</html>
