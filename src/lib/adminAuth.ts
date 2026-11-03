@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import type { NextRequest } from 'next/server';
+import { isBlobStorageConfigured } from '@/lib/blobEnv';
 
 export const ADMIN_COOKIE = 'mk_admin_session';
 export const SESSION_MAX_AGE = 60 * 60 * 12;
@@ -64,4 +65,4 @@ export function isAdminRequest(request: NextRequest): boolean {
   return isValidSessionToken(request.cookies.get(ADMIN_COOKIE)?.value);
 }
 
-export const isBlobConfigured = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+export const isBlobConfigured = () => isBlobStorageConfigured();

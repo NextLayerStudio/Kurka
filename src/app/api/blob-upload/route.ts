@@ -5,7 +5,10 @@ import { isAdminRequest, isBlobConfigured } from '@/lib/adminAuth';
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
+import { ensureBlobEnv } from '@/lib/blobEnv';
+
 export async function POST(request: NextRequest) {
+  ensureBlobEnv();
   if (!isBlobConfigured()) {
     return NextResponse.json({ error: 'Úložisko súborov nie je nastavené.' }, { status: 503 });
   }

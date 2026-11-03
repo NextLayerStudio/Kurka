@@ -1,3 +1,4 @@
+import { ensureBlobEnv, isBlobStorageConfigured } from '@/lib/blobEnv';
 import sanitizeHtml from 'sanitize-html';
 import type { BlogPost } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
@@ -128,7 +129,8 @@ export function collectBlobUrls(post: Pick<BlogPost, 'imageUrl' | 'videoUrl' | '
 }
 
 export async function deleteBlobFiles(urls: string[]) {
-  if (!urls.length || !process.env.BLOB_READ_WRITE_TOKEN) return;
+  if (!urls.length || !isBlobStorageConfigured()) return;
+  ensureBlobEnv();
   try {
     const { del } = await import('@vercel/blob');
     await del(urls);

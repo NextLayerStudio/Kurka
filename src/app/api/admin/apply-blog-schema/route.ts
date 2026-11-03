@@ -9,16 +9,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await prisma.$executeRawUnsafe(`
-      ALTER TABLE "blog_posts" ADD COLUMN IF NOT EXISTS "slug" TEXT;
-      ALTER TABLE "blog_posts" ADD COLUMN IF NOT EXISTS "content" TEXT;
-      ALTER TABLE "blog_posts" ADD COLUMN IF NOT EXISTS "videoUrl" TEXT;
-      ALTER TABLE "blog_posts" ADD COLUMN IF NOT EXISTS "published" BOOLEAN NOT NULL DEFAULT true;
-    `);
+    const statements = [
+      `ALTER TABLE "blog_posts" ADD COLUMN IF NOT EXISTS "slug" TEXT`,
+      `ALTER TABLE "blog_posts" ADD COLUMN IF NOT EXISTS "content" TEXT`,
+      `ALTER TABLE "blog_posts" ADD COLUMN IF NOT EXISTS "videoUrl" TEXT`,
+      `ALTER TABLE "blog_posts" ADD COLUMN IF NOT EXISTS "published" BOOLEAN NOT NULL DEFAULT true`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS "blog_posts_slug_key" ON "blog_posts"("slug")`,
+    ];
 
-    await prisma.$executeRawUnsafe(`
-      CREATE UNIQUE INDEX IF NOT EXISTS "blog_posts_slug_key" ON "blog_posts"("slug");
-    `);
+    for (const sql of statements) {
+      await prisma.$executeRawUnsafe(sql);
+    }
 
     await prisma.blogPost.findFirst({
       select: { id: true, slug: true, content: true, videoUrl: true, published: true },
