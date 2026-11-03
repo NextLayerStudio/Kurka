@@ -1,5 +1,4 @@
 import { upload } from '@vercel/blob/client';
-import { compressVideoForWeb } from './compressVideo';
 
 export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 export const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
@@ -102,6 +101,7 @@ export async function uploadVideo(file: File, blobEnabled: boolean, onProgress?:
   }
 
   onProgress?.(0, 'Pripravujem video…');
+  const { compressVideoForWeb } = await import('./compressVideo');
   const prepared = await compressVideoForWeb(file, (pct, status) => {
     // Reserve ~80% of the bar for compression, upload uses the rest.
     onProgress?.(Math.min(80, pct), status);

@@ -43,6 +43,13 @@ const nextConfig: NextConfig = {
   poweredByHeader: false, // Remove X-Powered-By header for security and performance
   // Enable static optimization
   reactStrictMode: true,
+  // @ffmpeg/ffmpeg uses `new Worker(new URL(...))` — not compatible with Turbopack yet (admin video compress).
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.experiments = { ...config.experiments, asyncWebAssembly: true };
+    }
+    return config;
+  },
   // Ensure API routes work properly
   async headers() {
     const headers = [
