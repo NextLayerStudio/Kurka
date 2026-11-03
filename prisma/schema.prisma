@@ -34,10 +34,14 @@ model FormSubmission {
 
 model BlogPost {
   id          String   @id @default(cuid())
+  slug        String?  @unique
   title       String
   description String
-  url         String
+  content     String?  // Sanitized HTML from the admin editor
+  url         String   // Optional external link, used when the post has no content
   imageUrl    String
+  videoUrl    String?  // Uploaded video file or YouTube/Vimeo link
+  published   Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

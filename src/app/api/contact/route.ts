@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { isAdminRequest } from '@/lib/adminAuth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -85,7 +86,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!isAdminRequest(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     if (!process.env.DATABASE_URL) {
       console.error('❌ DATABASE_URL not configured');

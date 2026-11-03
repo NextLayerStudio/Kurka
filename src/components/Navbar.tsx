@@ -3,35 +3,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect } from "react";
-
-const navLinks = [
-  { href: "/domov", label: "Domov" },
-  { href: "/o-mne", label: "O mne" },
-  { 
-    href: "/sluzby", 
-    label: "Služby",
-    hasDropdown: true,
-    subLinks: [
-      { href: "/sluzby/investovanie", label: "Investovanie" },
-      { href: "/sluzby/hypoteky", label: "Hypotéky" },
-      { 
-        href: "/sluzby/poistenia", 
-        label: "Poistenia",
-        hasDropdown: true,
-        subLinks: [
-          { href: "/sluzby/poistenia/zivotne", label: "Životné poistenie" },
-          { href: "/sluzby/poistenia/nezivotne", label: "Neživotné poistenie" },
-        ]
-      },
-      { href: "/sluzby/dochodok", label: "Renta a dôchodok" },
-    ]
-  },
-  { href: "/kalkulacky", label: "Kalkulačky" },
-  { href: "/spoluprace", label: "Spolupráca" },
-  { href: "/blog", label: "Blog" },
-  { href: "/kontakt", label: "Kontakt" },
-];
+import { Fragment, useState, useEffect } from "react";
+import { navLinks } from "@/config/navigation";
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -100,10 +73,13 @@ export default function Navbar() {
               {/* Navigation items centered */}
               <ul className="flex items-center justify-center md:justify-end md:pr-8 lg:justify-center lg:pr-0 space-x-1 md:space-x-2 lg:space-x-4 w-full">
               {navLinks.map((link, index) => (
-                <li 
-                  key={link.href} 
-                  className="flex items-center relative"
-                >
+                <Fragment key={link.href}>
+                  {index > 0 && (
+                    <li aria-hidden className="flex items-center pointer-events-none">
+                      <span className="block w-px h-3 md:h-4 lg:h-4 bg-white/60" />
+                    </li>
+                  )}
+                <li className="flex items-center relative">
                   {link.hasDropdown ? (
                     <div 
                       className="relative group dropdown-container flex items-center lg:py-2 lg:px-1"
@@ -237,10 +213,8 @@ export default function Navbar() {
                       {link.label}
                     </Link>
                   )}
-                  {index < navLinks.length - 1 && (
-                    <div className="w-px h-3 md:h-4 lg:h-4 bg-white/60 mx-1 md:mx-1.5 lg:mx-2"></div>
-                  )}
                 </li>
+                </Fragment>
               ))}
               </ul>
             </div>

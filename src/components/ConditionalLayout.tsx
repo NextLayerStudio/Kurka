@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { ReactNode } from 'react';
+import { Children, ReactNode } from 'react';
 
 interface ConditionalLayoutProps {
   children: ReactNode;
@@ -15,10 +15,9 @@ export default function ConditionalLayout({ children }: ConditionalLayoutProps) 
     pathname.startsWith('/kalkulacky/') && pathname !== '/kalkulacky';
 
   if (isFormularPage || isAdminPage || isCalculatorEmbedPage) {
-    // For formular and admin pages, only render the page content (children[1])
-    // children[0] = Navbar, children[1] = page content, children[2] = Footer
-    const childrenArray = Array.isArray(children) ? children : [children];
-    return <>{childrenArray[1]}</>;
+    // Layout children: Navbar, page, Footer, CookieConsent — render only the page.
+    const page = Children.toArray(children)[1];
+    return <>{page}</>;
   }
 
   // For all other pages, render everything (Navbar + content + Footer)

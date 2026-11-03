@@ -1,1354 +1,418 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
+import BlogManager from '@/components/admin/BlogManager';
+import { ContactsView, SubmissionsView, type ContactSubmission, type FormSubmission } from '@/components/admin/Submissions';
+import type { BlogPostSummary } from '@/lib/blogShared';
 
-// Hash function using Web Crypto API
-const hashString = async (str: string): Promise<string> => {
-  try {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(str);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  } catch (error) {
-    console.error('Hash function error:', error);
-    throw new Error('Hash computation failed. Make sure you are using HTTPS or localhost.');
+type Tab = 'submissions' | 'contact' | 'blog';
+type AuthState = 'checking' | 'out' | 'in';
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+interface ApiErrorBody {
+  error?: string;
+  action?: string;
+  code?: string;
+}
+
+async function getJson<T>(url: string): Promise<T> {
+  const response = await fetch(url, { cache: 'no-store' });
+  if (response.status === 401) throw new Error('401');
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
+    const detail = body.error ?? `HTTP ${response.status}`;
+    const err = new Error(detail) as Error & ApiErrorBody;
+    err.action = body.action;
+    err.code = body.code;
+    throw err;
   }
-};
-
-// Hashed admin credentials (SHA-256 hashes)
-// These are the pre-computed SHA-256 hashes of the credentials
-// Username: michal.kurka
-// Password: Sch4L-monly
-const ADMIN_USERNAME_HASH = '9f239379a414e668f36ac7dcd40b39f000d8aca553ae077c0077d869124a0922';
-const ADMIN_PASSWORD_HASH = '305520419fe6dc28f23d782064c1f65c73877f0b615118cd1ed9a200dd343efb';
-
-interface FormSubmission {
-  id: string;
-  financialLiteracy: string;
-  products: string[];
-  interests: string;
-  topics: string[];
-  saveOnMortgage: boolean;
-  saveOnInsurance: boolean;
-  incomeSecurity: boolean;
-  kidsFuture: boolean;
-  betterReturns: boolean;
-  reviewExistingContracts: boolean;
-  skFinancialLiteracy: string;
-  name: string;
-  surname: string;
-  phone: string | null;
-  email: string | null;
-  createdAt: string;
+  return response.json();
 }
 
-interface BlogPost {
-  id: string;
-  title: string;
-  description: string;
-  url: string;
-  imageUrl: string;
-  createdAt: string;
-}
-
-interface ContactSubmission {
-  id: string;
-  name: string;
-  surname: string;
-  phone: string | null;
-  email: string;
-  message: string | null;
-  createdAt: string;
+interface DbHealth {
+  connected?: boolean;
+  schemaReady?: boolean;
+  schemaError?: string;
+  suggestion?: string;
+  error?: string;
+  code?: string;
+  databaseUrl?: string;
 }
 
 export default function AdminPage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [debugHashes, setDebugHashes] = useState<{username?: string, password?: string}>({});
-  const [selectedSubmission, setSelectedSubmission] = useState<FormSubmission | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  // Blog management state
-  const [activeTab, setActiveTab] = useState<'submissions' | 'blog' | 'contact'>('submissions');
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
-  const [showBlogModal, setShowBlogModal] = useState(false);
-  const [blogForm, setBlogForm] = useState({
-    title: '',
-    description: '',
-    url: '',
-    imageUrl: ''
-  });
-  const [blogLoading, setBlogLoading] = useState(false);
-  const [blogError, setBlogError] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
-  
-  // Contact submissions state
-  const [contactSubmissions, setContactSubmissions] = useState<ContactSubmission[]>([]);
-  const [contactLoading, setContactLoading] = useState(false);
-  const [contactError, setContactError] = useState('');
-  const [selectedContactSubmission, setSelectedContactSubmission] = useState<ContactSubmission | null>(null);
-  const [showContactModal, setShowContactModal] = useState(false);
-  
-  const router = useRouter();
+  const [auth, setAuth] = useState<AuthState>('checking');
+  const [blobEnabled, setBlobEnabled] = useState(false);
 
   useEffect(() => {
-    // Check if already logged in (stored in sessionStorage)
-    const loggedIn = sessionStorage.getItem('adminLoggedIn') === 'true';
-    if (loggedIn) {
-      setIsLoggedIn(true);
-      fetchSubmissions();
-      fetchBlogPosts();
-      fetchContactSubmissions();
-    }
-
-    // Verify and update hashes on component mount (for debugging)
-    if (crypto && crypto.subtle) {
-      hashString('michal.kurka').then(hash => {
-        console.log('✅ Browser computed username hash:', hash);
-        console.log('✅ Stored username hash:', ADMIN_USERNAME_HASH);
-        console.log('✅ Match:', hash === ADMIN_USERNAME_HASH);
-        if (hash !== ADMIN_USERNAME_HASH) {
-          console.warn('⚠️ Username hash mismatch! Update ADMIN_USERNAME_HASH to:', hash);
-        }
-      }).catch(err => console.error('Hash verification error:', err));
-      
-      hashString('Sch4L-monly').then(hash => {
-        console.log('✅ Browser computed password hash:', hash);
-        console.log('✅ Stored password hash:', ADMIN_PASSWORD_HASH);
-        console.log('✅ Match:', hash === ADMIN_PASSWORD_HASH);
-        if (hash !== ADMIN_PASSWORD_HASH) {
-          console.warn('⚠️ Password hash mismatch! Update ADMIN_PASSWORD_HASH to:', hash);
-        }
-      }).catch(err => console.error('Hash verification error:', err));
-    }
+    getJson<{ authenticated: boolean; blobEnabled: boolean }>('/api/admin/session')
+      .then((data) => {
+        setBlobEnabled(data.blobEnabled);
+        setAuth(data.authenticated ? 'in' : 'out');
+      })
+      .catch(() => setAuth('out'));
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  if (auth === 'checking') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#202325]">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#5ECAD5] border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (auth === 'out') {
+    return (
+      <LoginScreen
+        onLoggedIn={(blob) => {
+          setBlobEnabled(blob);
+          setAuth('in');
+        }}
+      />
+    );
+  }
+
+  return <Dashboard blobEnabled={blobEnabled} onLoggedOut={() => setAuth('out')} />;
+}
+
+function LoginScreen({ onLoggedIn }: { onLoggedIn: (blobEnabled: boolean) => void }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    try {
-      // Check if Web Crypto API is available
-      if (!crypto || !crypto.subtle) {
-        setError('Web Crypto API nie je dostupná. Použite HTTPS alebo localhost.');
-        console.error('Web Crypto API not available');
-        return;
-      }
-
-      // Hash the input username and password
-      const usernameHash = await hashString(username.trim());
-      const passwordHash = await hashString(password);
-
-      // Store hashes for debugging display
-      setDebugHashes({ username: usernameHash, password: passwordHash });
-
-      // Debug logging
-      console.log('=== LOGIN ATTEMPT ===');
-      console.log('Input username:', `"${username}"`);
-      console.log('Input password:', password ? '***' : '(empty)');
-      console.log('Computed username hash:', usernameHash);
-      console.log('Computed password hash:', passwordHash);
-      console.log('Expected username hash:', ADMIN_USERNAME_HASH);
-      console.log('Expected password hash:', ADMIN_PASSWORD_HASH);
-      console.log('Username hash length:', usernameHash.length, 'Expected:', ADMIN_USERNAME_HASH.length);
-      console.log('Password hash length:', passwordHash.length, 'Expected:', ADMIN_PASSWORD_HASH.length);
-
-      // Compare hashes
-      const usernameMatch = usernameHash === ADMIN_USERNAME_HASH;
-      const passwordMatch = passwordHash === ADMIN_PASSWORD_HASH;
-      
-      console.log('Username match:', usernameMatch);
-      console.log('Password match:', passwordMatch);
-
-      if (usernameMatch && passwordMatch) {
-        console.log('✅ Login successful!');
-        setIsLoggedIn(true);
-        sessionStorage.setItem('adminLoggedIn', 'true');
-        fetchSubmissions();
-        fetchBlogPosts();
-        fetchContactSubmissions();
-      } else {
-        let errorDetails = 'Nesprávne prihlasovacie údaje.\n\n';
-        if (!usernameMatch) {
-          errorDetails += `Username hash mismatch!\nComputed: ${usernameHash}\nExpected: ${ADMIN_USERNAME_HASH}\n\n`;
-        }
-        if (!passwordMatch) {
-          errorDetails += `Password hash mismatch!\nComputed: ${passwordHash}\nExpected: ${ADMIN_PASSWORD_HASH}\n\n`;
-        }
-        errorDetails += 'Skopírujte vyššie uvedené hash hodnoty a pošlite mi ich.';
-        setError(errorDetails);
-        console.error('❌ Login failed!');
-        if (!usernameMatch) {
-          console.error('Username hash mismatch!');
-          console.error('Computed:', usernameHash);
-          console.error('Expected:', ADMIN_USERNAME_HASH);
-          console.error('⚠️ Update ADMIN_USERNAME_HASH to:', usernameHash);
-        }
-        if (!passwordMatch) {
-          console.error('Password hash mismatch!');
-          console.error('Computed:', passwordHash);
-          console.error('Expected:', ADMIN_PASSWORD_HASH);
-          console.error('⚠️ Update ADMIN_PASSWORD_HASH to:', passwordHash);
-        }
-      }
-    } catch (error) {
-      setError('Chyba pri prihlasovaní: ' + (error instanceof Error ? error.message : 'Neznáma chyba'));
-      console.error('Login error:', error);
-    }
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    sessionStorage.removeItem('adminLoggedIn');
-    setUsername('');
-    setPassword('');
-    setSubmissions([]);
-  };
-
-  const fetchSubmissions = async () => {
     setLoading(true);
-    setError('');
     try {
-      const response = await fetch('/api/form-submission');
-      const data = await response.json();
-      
-      if (response.ok) {
-        setSubmissions(data);
-      } else {
-        // Show more detailed error message
-        const errorMsg = data.error || data.details || 'Chyba pri načítavaní dát';
-        const errorDetails = data.details ? ` (${data.details})` : '';
-        setError(`${errorMsg}${errorDetails}`);
-        console.error('Error fetching submissions:', data);
-      }
-    } catch (error) {
-      setError('Chyba pri načítavaní dát - skontrolujte pripojenie k databáze');
-      console.error('Error fetching submissions:', error);
+      const response = await fetch('/api/admin/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Prihlásenie zlyhalo.');
+      onLoggedIn(Boolean(data.blobEnabled));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Prihlásenie zlyhalo.');
     } finally {
       setLoading(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('sk-SK');
-  };
+  return (
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#202325] px-4">
+      <div className="pointer-events-none absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-[#5ECAD5]/20 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-48 -right-40 h-[520px] w-[520px] rounded-full bg-[#1F8E99]/25 blur-3xl" />
 
-  // Blog management functions
-  const fetchBlogPosts = async () => {
-    setBlogLoading(true);
-    try {
-      const response = await fetch('/api/blog');
-      if (response.ok) {
-        const data = await response.json();
-        setBlogPosts(data);
-      } else {
-        setBlogError('Chyba pri načítavaní blog príspevkov');
-      }
-    } catch (error) {
-      setBlogError('Chyba pri načítavaní blog príspevkov');
-      console.error('Error fetching blog posts:', error);
-    } finally {
-      setBlogLoading(false);
-    }
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const uploadImage = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    console.log('Uploading file:', file.name, file.size, 'bytes');
-
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Upload failed:', errorData);
-      
-      // Show more specific error messages
-      if (errorData.details) {
-        throw new Error(`${errorData.error}\n\nDetaily: ${errorData.details}`);
-      }
-      throw new Error(errorData.error || 'Failed to upload image');
-    }
-
-    const data = await response.json();
-    console.log('Upload successful:', data);
-    return data.imageUrl;
-  };
-
-  const handleBlogSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Blog form submitted:', blogForm);
-    console.log('Selected file:', selectedFile);
-    setBlogLoading(true);
-    
-    try {
-      let imageUrl = blogForm.imageUrl;
-
-      // If a file was selected, upload it first
-      if (selectedFile) {
-        imageUrl = await uploadImage(selectedFile);
-      }
-
-      // Validate that we have an image URL
-      if (!imageUrl) {
-        console.log('No image URL provided');
-        setBlogError('Musíte nahrať obrázok alebo zadať URL obrázka');
-        setBlogLoading(false);
-        return;
-      }
-
-      // Validate other required fields
-      if (!blogForm.title || !blogForm.description) {
-        console.log('Missing required fields:', { title: blogForm.title, description: blogForm.description });
-        setBlogError('Nadpis a popis sú povinné');
-        setBlogLoading(false);
-        return;
-      }
-
-      const response = await fetch('/api/blog', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...blogForm,
-          url: blogForm.url.trim(),
-          imageUrl
-        }),
-      });
-
-      if (response.ok) {
-        setShowBlogModal(false);
-        setBlogForm({ title: '', description: '', url: '', imageUrl: '' });
-        setSelectedFile(null);
-        setImagePreview('');
-        fetchBlogPosts();
-        setBlogError('');
-      } else {
-        setBlogError('Chyba pri vytváraní blog príspevku');
-      }
-    } catch (error) {
-      console.error('Error creating blog post:', error);
-      setBlogError(error instanceof Error ? error.message : 'Chyba pri vytváraní blog príspevku');
-    } finally {
-      setBlogLoading(false);
-    }
-  };
-
-  const deleteBlogPost = async (id: string) => {
-    if (!confirm('Ste si istý, že chcete vymazať tento blog príspevok?')) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/blog?id=${id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        fetchBlogPosts();
-      } else {
-        setBlogError('Chyba pri mazaní blog príspevku');
-      }
-    } catch (error) {
-      setBlogError('Chyba pri mazaní blog príspevku');
-      console.error('Error deleting blog post:', error);
-    }
-  };
-
-  const cleanupOrphanedImages = async () => {
-    if (!confirm('Ste si istý, že chcete vymazať nepoužívané obrázky? Táto akcia je nevratná.')) {
-      return;
-    }
-
-    setBlogLoading(true);
-    try {
-      const response = await fetch('/api/cleanup-images', {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        alert(result.message);
-        setBlogError('');
-      } else {
-        setBlogError('Chyba pri čistení obrázkov');
-      }
-    } catch (error) {
-      setBlogError('Chyba pri čistení obrázkov');
-      console.error('Error cleaning up images:', error);
-    } finally {
-      setBlogLoading(false);
-    }
-  };
-
-  // Contact submissions functions
-  const fetchContactSubmissions = async () => {
-    setContactLoading(true);
-    try {
-      const response = await fetch('/api/contact');
-      if (response.ok) {
-        const data = await response.json();
-        setContactSubmissions(data);
-      } else {
-        setContactError('Chyba pri načítavaní kontaktných formulárov');
-      }
-    } catch (error) {
-      setContactError('Chyba pri načítavaní kontaktných formulárov');
-      console.error('Error fetching contact submissions:', error);
-    } finally {
-      setContactLoading(false);
-    }
-  };
-
-  const openContactModal = (submission: ContactSubmission) => {
-    setSelectedContactSubmission(submission);
-    setShowContactModal(true);
-  };
-
-  const closeContactModal = () => {
-    setSelectedContactSubmission(null);
-    setShowContactModal(false);
-  };
-
-  const openModal = (submission: FormSubmission) => {
-    setSelectedSubmission(submission);
-    setShowModal(true);
-  };
-
-  const closeModal = () => {
-    setSelectedSubmission(null);
-    setShowModal(false);
-  };
-
-  // Filter submissions based on search term (by name)
-  const filteredSubmissions = submissions.filter(submission => {
-    const fullName = `${submission.name} ${submission.surname}`.toLowerCase();
-    return fullName.includes(searchTerm.toLowerCase());
-  });
-
-  if (!isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-3 sm:p-6">
-        {/* Back Button */}
-        <button
-          onClick={() => router.push('/')}
-          className="absolute top-3 right-3 sm:top-6 sm:right-6 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-3 sm:px-4 rounded-lg transition duration-200 flex items-center space-x-1 sm:space-x-2 shadow-md hover:shadow-lg text-sm sm:text-base"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          <span className="hidden sm:inline">Späť na domov</span>
-          <span className="sm:hidden">Späť</span>
-        </button>
-
-        <div className="max-w-md w-full space-y-6 sm:space-y-8 p-4 sm:p-8">
-          <div>
-            <h2 className="mt-6 text-center text-2xl sm:text-3xl font-extrabold text-gray-900">
-              Admin prihlásenie
-            </h2>
-          </div>
-          <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                  Používateľské meno
-                </label>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
-                />
-              </div>
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Heslo
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
-                />
-              </div>
-            </div>
-
-            {error && (
-              <div className="text-red-600 text-sm">
-                <div className="mb-2">{error}</div>
-                {debugHashes.username && (
-                  <div className="mt-2 p-2 bg-gray-100 rounded text-xs font-mono break-all">
-                    <div className="font-bold mb-1">Computed Hashes:</div>
-                    <div>Username: {debugHashes.username}</div>
-                    <div className="mt-1">Password: {debugHashes.password}</div>
-                    <div className="mt-2 text-gray-600">Skopírujte tieto hodnoty a pošlite mi ich.</div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div>
-              <button
-                type="submit"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Prihlásiť sa
-              </button>
-            </div>
-          </form>
+      <div className="relative w-full max-w-md">
+        <div className="mb-8 flex justify-center">
+          <Image src="/Kópia súboru MK logo 2 biele.png" alt="Michal Kurka" width={180} height={60} style={{ height: 72, width: 'auto' }} priority />
         </div>
+        <form onSubmit={submit} className="rounded-3xl bg-white p-8 shadow-2xl sm:p-10">
+          <h1 className="text-2xl font-bold text-[#202325]">Administrácia</h1>
+          <p className="mt-1 text-sm text-gray-500">Prihláste sa a spravujte formuláre, správy a blog.</p>
+
+          <label className="mt-8 block text-sm font-medium text-gray-700" htmlFor="username">Používateľské meno</label>
+          <input
+            id="username"
+            autoComplete="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            className="mt-1.5 w-full rounded-xl border border-gray-200 px-4 py-3 text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#5ECAD5]"
+          />
+
+          <label className="mt-5 block text-sm font-medium text-gray-700" htmlFor="password">Heslo</label>
+          <div className="relative mt-1.5">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 pr-20 text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#5ECAD5]"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-500 hover:text-[#1F8E99]"
+            >
+              {showPassword ? 'Skryť' : 'Zobraziť'}
+            </button>
+          </div>
+
+          {error && <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-7 w-full rounded-xl bg-[#5ECAD5] py-3.5 font-semibold text-white shadow-lg shadow-[#5ECAD5]/30 transition-colors hover:bg-[#4BB8C4] disabled:opacity-60"
+          >
+            {loading ? 'Prihlasujem…' : 'Prihlásiť sa'}
+          </button>
+        </form>
+        <p className="mt-6 text-center text-sm text-white/50">
+          <Link href="/" className="hover:text-white">← Späť na web</Link>
+        </p>
       </div>
-    );
-  }
+    </div>
+  );
+}
+
+function Dashboard({ blobEnabled, onLoggedOut }: { blobEnabled: boolean; onLoggedOut: () => void }) {
+  const [tab, setTab] = useState<Tab>('submissions');
+  const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
+  const [contacts, setContacts] = useState<ContactSubmission[]>([]);
+  const [posts, setPosts] = useState<BlogPostSummary[]>([]);
+  const [loading, setLoading] = useState({ submissions: true, contacts: true, posts: true });
+  const [error, setError] = useState('');
+  const [dbHealth, setDbHealth] = useState<DbHealth | null>(null);
+  const [schemaMigrating, setSchemaMigrating] = useState(false);
+
+  const handleError = useCallback(
+    (err: unknown, label: string) => {
+      if (err instanceof Error && err.message === '401') {
+        onLoggedOut();
+        return;
+      }
+      const e = err as Error & ApiErrorBody;
+      const text = e.message && e.message !== '500' ? e.message : `Nepodarilo sa načítať ${label}.`;
+      const action = e.action ? ` ${e.action}` : ' Skontrolujte pripojenie k databáze.';
+      setError(`${text}${action}`);
+    },
+    [onLoggedOut]
+  );
+
+  useEffect(() => {
+    fetch('/api/health', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data: DbHealth) => setDbHealth(data))
+      .catch(() => setDbHealth(null));
+  }, []);
+
+  const applyBlogSchema = async () => {
+    setSchemaMigrating(true);
+    setError('');
+    try {
+      const response = await fetch('/api/admin/apply-blog-schema', { method: 'POST' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Migrácia zlyhala.');
+      const health = await fetch('/api/health', { cache: 'no-store' }).then((r) => r.json());
+      setDbHealth(health);
+      loadPosts();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Migrácia zlyhala.');
+    } finally {
+      setSchemaMigrating(false);
+    }
+  };
+
+  const loadSubmissions = useCallback(() => {
+    getJson<FormSubmission[]>('/api/form-submission')
+      .then(setSubmissions)
+      .catch((err) => handleError(err, 'formuláre'))
+      .finally(() => setLoading((l) => ({ ...l, submissions: false })));
+  }, [handleError]);
+
+  const loadContacts = useCallback(() => {
+    getJson<ContactSubmission[]>('/api/contact')
+      .then(setContacts)
+      .catch((err) => handleError(err, 'správy'))
+      .finally(() => setLoading((l) => ({ ...l, contacts: false })));
+  }, [handleError]);
+
+  const loadPosts = useCallback(() => {
+    getJson<BlogPostSummary[]>('/api/blog?all=1')
+      .then(setPosts)
+      .catch((err) => handleError(err, 'články'))
+      .finally(() => setLoading((l) => ({ ...l, posts: false })));
+  }, [handleError]);
+
+  useEffect(() => {
+    loadSubmissions();
+    loadContacts();
+    loadPosts();
+  }, [loadSubmissions, loadContacts, loadPosts]);
+
+  const logout = async () => {
+    await fetch('/api/admin/session', { method: 'DELETE' });
+    onLoggedOut();
+  };
+
+  const refresh = () => {
+    setError('');
+    if (tab === 'submissions') loadSubmissions();
+    else if (tab === 'contact') loadContacts();
+    else loadPosts();
+  };
+
+  const recent = (items: { createdAt: string }[]) =>
+    items.filter((i) => Date.now() - new Date(i.createdAt).getTime() < WEEK_MS).length;
+
+  const stats = [
+    { label: 'Formuláre', value: submissions.length, note: `${recent(submissions)} za posledných 7 dní`, tab: 'submissions' as const },
+    { label: 'Správy z kontaktu', value: contacts.length, note: `${recent(contacts)} za posledných 7 dní`, tab: 'contact' as const },
+    {
+      label: 'Články na blogu',
+      value: posts.filter((p) => p.published).length,
+      note: `${posts.filter((p) => !p.published).length} rozpísaných konceptov`,
+      tab: 'blog' as const,
+    },
+  ];
+
+  const tabs: { key: Tab; label: string; count: number }[] = [
+    { key: 'submissions', label: 'Formuláre', count: submissions.length },
+    { key: 'contact', label: 'Kontakty', count: contacts.length },
+    { key: 'blog', label: 'Blog', count: posts.length },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
-      {/* Main content - blur when modal is open */}
-      <div className={`${showModal || showBlogModal ? 'blur-md' : ''} transition-all duration-300`}>
-        {/* Header */}
-        <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
-            <button
-              onClick={
-                activeTab === 'submissions' ? fetchSubmissions : 
-                activeTab === 'blog' ? fetchBlogPosts : 
-                fetchContactSubmissions
-              }
-              disabled={loading || blogLoading || contactLoading}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-200 disabled:opacity-50"
-            >
-              {(loading || blogLoading || contactLoading) ? 'Načítavam...' : 'Obnoviť'}
-            </button>
-            <button
-              onClick={handleLogout}
-              className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition duration-200"
-            >
+    <div className="min-h-screen bg-[#f5f7f8]">
+      <header className="bg-[#202325]">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+          <Image src="/Kópia súboru MK logo 2 biele.png" alt="Michal Kurka" width={120} height={40} style={{ height: 40, width: 'auto' }} />
+          <span className="hidden border-l border-white/15 pl-4 text-sm font-medium text-white/60 sm:inline">Administrácia</span>
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            <a href="/" target="_blank" rel="noopener noreferrer" className="rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white">
+              Zobraziť web ↗
+            </a>
+            <button onClick={logout} className="rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white">
               Odhlásiť sa
             </button>
           </div>
         </div>
+      </header>
 
-        {/* Tab Navigation */}
-        <div className="mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('submissions')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'submissions'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Formuláre ({submissions.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('blog')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'blog'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Blog ({blogPosts.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('contact')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'contact'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Kontakt ({contactSubmissions.length})
-              </button>
-            </nav>
-          </div>
+      <div className="bg-[#202325] pb-20">
+        <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+          <h1 className="text-2xl font-bold text-white sm:text-3xl">Dobrý deň, Michal 👋</h1>
+          <p className="mt-1 text-white/60">Tu je prehľad toho, čo sa deje na vašom webe.</p>
+        </div>
+      </div>
+
+      <main className="mx-auto -mt-14 max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+        <div className="grid gap-4 sm:grid-cols-3">
+          {stats.map((s) => (
+            <button
+              key={s.label}
+              onClick={() => setTab(s.tab)}
+              className={`rounded-2xl bg-white p-5 text-left shadow-sm ring-1 transition-all hover:shadow-md ${
+                tab === s.tab ? 'ring-2 ring-[#5ECAD5]' : 'ring-black/5'
+              }`}
+            >
+              <p className="text-sm font-medium text-gray-500">{s.label}</p>
+              <p className="mt-1 font-['Monda',Arial,sans-serif] text-3xl font-bold text-[#202325]">{s.value}</p>
+              <p className="mt-1 text-xs text-gray-400">{s.note}</p>
+            </button>
+          ))}
         </div>
 
-        {/* Content based on active tab */}
-        {activeTab === 'submissions' && (
-          <>
-            {/* Search Bar */}
-            <div className="mb-6">
-              <div className="relative max-w-full sm:max-w-md">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  placeholder="Hľadať podľa mena..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 text-gray-900 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
-                {searchTerm && (
+        <div className="mt-8 mb-6 flex items-center gap-3">
+          <nav className="flex gap-1 overflow-x-auto rounded-xl bg-white p-1 shadow-sm ring-1 ring-black/5">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                  tab === t.key ? 'bg-[#5ECAD5] text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                {t.label}
+                <span className={`rounded-full px-1.5 text-xs ${tab === t.key ? 'bg-white/25' : 'bg-gray-100 text-gray-500'}`}>{t.count}</span>
+              </button>
+            ))}
+          </nav>
+          <button
+            onClick={refresh}
+            title="Obnoviť"
+            className="ml-auto rounded-xl bg-white p-2.5 text-gray-500 shadow-sm ring-1 ring-black/5 hover:text-[#1F8E99]"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" />
+            </svg>
+          </button>
+        </div>
+
+        {dbHealth && (dbHealth.schemaReady === false || !dbHealth.connected) && (
+          <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-4 text-sm text-amber-950">
+            <p className="font-semibold">Databáza potrebuje nastavenie</p>
+            {dbHealth.databaseUrl === 'missing' || dbHealth.code === 'MISSING_URL' ? (
+              <>
+                <p className="mt-1">
+                  Na produkcii chýba premenná <strong>DATABASE_URL</strong>. Bez nej admin nevie načítať články ani ukladať dáta z
+                  formulárov.
+                </p>
+                <ol className="mt-3 list-decimal space-y-2 pl-5 text-amber-900">
+                  <li>
+                    Vercel → váš projekt Kurka → <strong>Storage</strong> → vytvorte alebo pripojte <strong>Postgres</strong> (Neon /
+                    Vercel Postgres).
+                  </li>
+                  <li>
+                    Skontrolujte <strong>Settings → Environment Variables</strong>, že existuje <strong>DATABASE_URL</strong> pre
+                    Production (pri pripojení DB sa často pridá automaticky).
+                  </li>
+                  <li>
+                    <strong>Redeploy</strong> projektu (Deployments → … → Redeploy).
+                  </li>
+                  <li>
+                    Lokálne: <code className="rounded bg-white/80 px-1">vercel env pull .env.local</code>, potom{' '}
+                    <code className="rounded bg-white/80 px-1">npx prisma db push</code> (vytvorí tabuľky).
+                  </li>
+                </ol>
+              </>
+            ) : (
+              <>
+                <p className="mt-1">
+                  {dbHealth.schemaError ??
+                    dbHealth.suggestion ??
+                    dbHealth.error ??
+                    'Skontrolujte DATABASE_URL vo Verceli a spustite migráciu schémy.'}
+                </p>
+                <p className="mt-2 font-mono text-xs rounded-lg border border-amber-200 bg-white/80 px-3 py-2">
+                  npm run db:push
+                </p>
+                <p className="mt-1 text-xs text-amber-800">
+                  (Načíta <code className="rounded bg-white/80 px-1">.env.local</code> — Prisma samo nečíta tento súbor.)
+                </p>
+                {dbHealth.connected && (
                   <button
-                    onClick={() => setSearchTerm('')}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    type="button"
+                    disabled={schemaMigrating}
+                    onClick={() => void applyBlogSchema()}
+                    className="mt-3 rounded-lg bg-amber-900 px-4 py-2 text-sm font-medium text-white hover:bg-amber-950 disabled:opacity-60"
                   >
-                    <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    {schemaMigrating ? 'Aktualizujem…' : 'Aktualizovať blog tabuľku teraz'}
                   </button>
                 )}
-              </div>
-              {searchTerm && (
-                <p className="mt-2 text-sm text-gray-600">
-                  Zobrazené: {filteredSubmissions.length} z {submissions.length} formulárov
-                </p>
-              )}
-            </div>
-
-        {/* Submissions Table */}
-        <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          <div className="px-3 sm:px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
-              Odoslané formuláre ({filteredSubmissions.length})
-            </h2>
-          </div>
-
-          {error && activeTab === 'submissions' && (
-            <div className="px-3 sm:px-6 py-4 bg-red-50 border-l-4 border-red-400">
-              <p className="text-red-800">{error}</p>
-            </div>
-          )}
-
-          {loading ? (
-            <div className="px-3 sm:px-6 py-12 text-center">
-              <div className="text-gray-500">Načítavam dáta...</div>
-            </div>
-          ) : filteredSubmissions.length === 0 ? (
-            <div className="px-3 sm:px-6 py-12 text-center">
-              <div className="text-gray-500 text-sm sm:text-base">
-                {searchTerm ? 'Žiadne formuláre nevyhovujú vyhľadávaniu' : 'Žiadne formuláre neboli odoslané'}
-              </div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Meno
-                    </th>
-                    <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Kontakt
-                    </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Gramotnosť
-                    </th>
-                    <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Záujem
-                    </th>
-                    <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Dátum
-                    </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Akcie
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredSubmissions.map((submission) => (
-                    <tr key={submission.id} className="hover:bg-gray-50">
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {submission.name} {submission.surname}
-                        </div>
-                        <div className="sm:hidden text-xs text-gray-500 mt-1">
-                          {submission.phone && <div>📞 {submission.phone}</div>}
-                          {submission.email && <div>📧 {submission.email}</div>}
-                        </div>
-                      </td>
-                      <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {submission.phone && <div>📞 {submission.phone}</div>}
-                          {submission.email && <div>📧 {submission.email}</div>}
-                        </div>
-                      </td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col space-y-1">
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                            {submission.financialLiteracy}
-                          </span>
-                          {submission.skFinancialLiteracy && (
-                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
-                              SK gramotnosť: {submission.skFinancialLiteracy}
-                            </span>
-                          )}
-                        </div>
-                        <div className="md:hidden text-xs text-gray-500 mt-1 max-w-xs truncate">
-                          {submission.interests}
-                        </div>
-                      </td>
-                      <td className="hidden md:table-cell px-6 py-4">
-                        <div className="text-sm text-gray-900 max-w-xs truncate">
-                          {submission.interests}
-                        </div>
-                      </td>
-                      <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(submission.createdAt)}
-                      </td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => openModal(submission)}
-                          className="text-blue-600 hover:text-blue-900 text-xs sm:text-sm"
-                        >
-                          <span className="hidden sm:inline">Zobraziť detaily</span>
-                          <span className="sm:hidden">Detaily</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-          </>
-        )}
-
-        {/* Blog Management Section */}
-        {activeTab === 'blog' && (
-          <div className="space-y-6">
-            {/* Blog Header with Add Button */}
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-800">
-                Blog príspevky ({blogPosts.length})
-              </h2>
-              <div className="flex space-x-3">
-                <button
-                  onClick={cleanupOrphanedImages}
-                  className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition duration-200 flex items-center space-x-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  <span>Vyčistiť obrázky</span>
-                </button>
-                <button
-                  onClick={() => setShowBlogModal(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition duration-200 flex items-center space-x-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  <span>Pridať príspevok</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Error Display */}
-            {blogError && (
-              <div className="bg-red-50 border-l-4 border-red-400 p-4">
-                <p className="text-red-800">{blogError}</p>
-              </div>
+              </>
             )}
-
-            {/* Blog Posts Grid */}
-            {blogLoading ? (
-              <div className="text-center py-12">
-                <div className="text-gray-500">Načítavam blog príspevky...</div>
-              </div>
-            ) : blogPosts.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500">Zatiaľ žiadne blog príspevky.</p>
-              </div>
-            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {blogPosts.map((post) => (
-                  <div key={post.id} className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
-                    <div className="relative h-48">
-                      <Image
-                        src={post.imageUrl}
-                        alt={post.title}
-                        fill
-                        unoptimized={post.imageUrl.startsWith('data:')}
-                        className="object-cover"
-                      />
-                    </div>
-                    <div className="p-4 bg-white">
-                      <h3 className="font-semibold text-lg mb-2 line-clamp-2 text-gray-900">{post.title}</h3>
-                      <p className="text-gray-600 text-sm mb-3 line-clamp-3">{post.description}</p>
-                      <div className="flex justify-between items-center text-sm text-gray-500 mb-3">
-                        <span className="text-gray-500">{formatDate(post.createdAt)}</span>
-                        {post.url ? (
-                          <a 
-                            href={post.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                          >
-                            Otvoriť link
-                          </a>
-                        ) : (
-                          <span className="text-gray-400">Bez externého linku</span>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => deleteBlogPost(post.id)}
-                        className="w-full bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded transition duration-200 font-medium"
-                      >
-                        Vymazať
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <p className="mt-2 text-xs text-amber-800">
+              Podrobnejší stav:{' '}
+              <Link href="/admin/database-status" className="font-semibold underline">
+                /admin/database-status
+              </Link>
+              . Po nastavení obnovte stránku.
+            </p>
           </div>
         )}
 
-        {/* Contact Submissions Section */}
-        {activeTab === 'contact' && (
-          <div className="space-y-6">
-            {/* Contact Header */}
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-800">
-                Kontaktné formuláre ({contactSubmissions.length})
-              </h2>
-            </div>
-
-            {/* Error Display */}
-            {contactError && (
-              <div className="bg-red-50 border-l-4 border-red-400 p-4">
-                <p className="text-red-800">{contactError}</p>
-              </div>
-            )}
-
-            {/* Contact Submissions Table */}
-            <div className="bg-white shadow-md rounded-lg overflow-hidden">
-              <div className="px-3 sm:px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
-                  Kontaktné formuláre ({contactSubmissions.length})
-                </h2>
-              </div>
-
-              {contactLoading ? (
-                <div className="px-3 sm:px-6 py-12 text-center">
-                  <div className="text-gray-500">Načítavam kontaktné formuláre...</div>
-                </div>
-              ) : contactSubmissions.length === 0 ? (
-                <div className="px-3 sm:px-6 py-12 text-center">
-                  <p className="text-gray-500">Zatiaľ žiadne kontaktné formuláre.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Meno
-                        </th>
-                        <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Kontakt
-                        </th>
-                        <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Správa
-                        </th>
-                        <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Dátum
-                        </th>
-                        <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Akcie
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {contactSubmissions.map((submission) => (
-                        <tr key={submission.id} className="hover:bg-gray-50">
-                          <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {submission.name} {submission.surname}
-                            </div>
-                            <div className="sm:hidden text-xs text-gray-500 mt-1">
-                              {submission.phone && <div>📞 {submission.phone}</div>}
-                              <div>📧 {submission.email}</div>
-                            </div>
-                          </td>
-                          <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {submission.phone && <div>📞 {submission.phone}</div>}
-                              <div>📧 {submission.email}</div>
-                            </div>
-                          </td>
-                          <td className="px-3 sm:px-6 py-4">
-                            <div className="text-sm text-gray-900 max-w-xs truncate">
-                              {submission.message || 'Žiadna správa'}
-                            </div>
-                          </td>
-                          <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {formatDate(submission.createdAt)}
-                          </td>
-                          <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button
-                              onClick={() => openContactModal(submission)}
-                              className="text-blue-600 hover:text-blue-900 text-xs sm:text-sm"
-                            >
-                              <span className="hidden sm:inline">Zobraziť detaily</span>
-                              <span className="sm:hidden">Detaily</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+        {error && (
+          <div className="mb-5 flex items-center justify-between rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+            <button onClick={() => setError('')} className="ml-4 text-red-400 hover:text-red-600">×</button>
           </div>
         )}
-      </div>
-      </div>
 
-      {/* Blog Modal - Transparent overlay */}
-      {showBlogModal && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 z-[60] overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full relative z-[70] border border-gray-200 my-8 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b bg-gray-50 sticky top-0 z-10">
-              <h3 className="text-lg font-semibold text-gray-900">Pridať nový blog príspevok</h3>
-              <button
-                onClick={() => {
-                  setShowBlogModal(false);
-                  setBlogForm({ title: '', description: '', url: '', imageUrl: '' });
-                  setSelectedFile(null);
-                  setImagePreview('');
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <form onSubmit={handleBlogSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nadpis
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={blogForm.title}
-                  onChange={(e) => setBlogForm({ ...blogForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-500"
-                  placeholder="Zadajte nadpis článku..."
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Popis
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  value={blogForm.description}
-                  onChange={(e) => setBlogForm({ ...blogForm, description: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-500"
-                  placeholder="Zadajte popis článku..."
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  URL link <span className="text-gray-400 font-normal">(voliteľné)</span>
-                </label>
-                <input
-                  type="url"
-                  value={blogForm.url}
-                  onChange={(e) => setBlogForm({ ...blogForm, url: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-500"
-                  placeholder="https://example.com/clanok (voliteľné)"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Obrázok
-                </label>
-                
-                {/* File Upload */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-center w-full">
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <svg className="w-8 h-8 mb-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                        <p className="mb-2 text-sm text-gray-500">
-                          <span className="font-semibold">Kliknite pre nahranie</span> alebo pretiahnite obrázok
-                        </p>
-                        <p className="text-xs text-gray-500">PNG, JPG, GIF (max. 5MB)</p>
-                      </div>
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleFileSelect}
-                      />
-                    </label>
-                  </div>
-
-                  {/* Image Preview */}
-                  {imagePreview && (
-                    <div className="relative">
-                      <div className="relative w-full h-32 rounded-lg overflow-hidden">
-                        <Image
-                          src={imagePreview}
-                          alt="Preview"
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedFile(null);
-                          setImagePreview('');
-                        }}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  )}
-
-                  {/* URL Alternative */}
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-gray-300" />
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                      <span className="px-2 bg-white text-gray-500">alebo</span>
-                    </div>
-                  </div>
-
-                  <input
-                    type="url"
-                    value={blogForm.imageUrl}
-                    onChange={(e) => setBlogForm({ ...blogForm, imageUrl: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-500"
-                    placeholder="Zadajte URL obrázka (voliteľné)"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowBlogModal(false);
-                    setBlogForm({ title: '', description: '', url: '', imageUrl: '' });
-                    setSelectedFile(null);
-                    setImagePreview('');
-                  }}
-                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition duration-200"
-                >
-                  Zrušiť
-                </button>
-                <button
-                  type="submit"
-                  disabled={blogLoading}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200 disabled:opacity-50"
-                >
-                  {blogLoading ? 'Ukladám...' : 'Uložiť'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Detailed View Modal */}
-      {showModal && selectedSubmission && (
-        <div className="fixed inset-0 flex items-center justify-center p-2 sm:p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex justify-between items-start p-3 sm:p-6 border-b border-gray-200">
-              <h3 className="text-lg sm:text-2xl font-bold text-gray-900 pr-4">
-                Detail formulára - {selectedSubmission.name} {selectedSubmission.surname}
-              </h3>
-              <button
-                onClick={closeModal}
-                className="text-gray-400 hover:text-gray-600 text-2xl font-bold flex-shrink-0"
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
-              {/* Personal Information */}
-              <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
-                <h4 className="text-base sm:text-lg font-semibold text-blue-900 mb-3">👤 Osobné údaje</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Meno:</span>
-                    <p className="text-gray-900 font-medium">{selectedSubmission.name}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Priezvisko:</span>
-                    <p className="text-gray-900 font-medium">{selectedSubmission.surname}</p>
-                  </div>
-                  {selectedSubmission.phone && (
-                    <div>
-                      <span className="text-sm font-medium text-gray-600">Telefón:</span>
-                      <p className="text-gray-900 font-medium">📞 {selectedSubmission.phone}</p>
-                    </div>
-                  )}
-                  {selectedSubmission.email && (
-                    <div>
-                      <span className="text-sm font-medium text-gray-600">E-mail:</span>
-                      <p className="text-gray-900 font-medium">📧 {selectedSubmission.email}</p>
-                    </div>
-                  )}
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Dátum odoslania:</span>
-                    <p className="text-gray-900 font-medium">📅 {formatDate(selectedSubmission.createdAt)}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Financial Literacy */}
-              <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="text-lg font-semibold text-green-900 mb-3">📊 Finančná gramotnosť</h4>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-600">Hodnotenie:</span>
-                  <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
-                    selectedSubmission.financialLiteracy === 'Skvelá' ? 'bg-green-100 text-green-800' :
-                    selectedSubmission.financialLiteracy === 'Dobrá' ? 'bg-blue-100 text-blue-800' :
-                    selectedSubmission.financialLiteracy === 'Priemerná' ? 'bg-yellow-100 text-yellow-800' :
-                    selectedSubmission.financialLiteracy === 'Zlá' ? 'bg-orange-100 text-orange-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {selectedSubmission.financialLiteracy}
-                  </span>
-                </div>
-                {selectedSubmission.skFinancialLiteracy && (
-                  <div className="flex items-center space-x-2 mt-2">
-                    <span className="text-sm font-medium text-gray-600">SK gramotnosť:</span>
-                    <span className="inline-flex px-3 py-1 text-sm font-semibold rounded-full bg-indigo-100 text-indigo-800">
-                      {selectedSubmission.skFinancialLiteracy}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Current Products */}
-              <div className="bg-purple-50 rounded-lg p-4">
-                <h4 className="text-lg font-semibold text-purple-900 mb-3">💼 Aktuálne využívané produkty</h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedSubmission.products.map((product, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex px-3 py-1 text-sm font-medium bg-purple-100 text-purple-800 rounded-full"
-                    >
-                      {product}
-                    </span>
-                  ))}
-                </div>
-                {selectedSubmission.products.length === 0 && (
-                  <p className="text-gray-500 italic">Žiadne produkty neboli vybrané</p>
-                )}
-              </div>
-
-              {/* Main Interest */}
-              <div className="bg-orange-50 rounded-lg p-4">
-                <h4 className="text-lg font-semibold text-orange-900 mb-3">🎯 Hlavný záujem</h4>
-                <div className="bg-white p-3 rounded border-l-4 border-orange-400">
-                  <p className="text-gray-900 font-medium">{selectedSubmission.interests}</p>
-                </div>
-              </div>
-
-              {/* Selected Interests - show only checked */}
-              <div className="bg-indigo-50 rounded-lg p-4">
-                <h4 className="text-lg font-semibold text-indigo-900 mb-3">📚 Vybrané záujmy</h4>
-                {(() => {
-                  const interestItems: { label: string; value: boolean }[] = [
-                    { label: 'Ušetriť na hypotéke', value: selectedSubmission.saveOnMortgage },
-                    { label: 'Ušetriť na poistných zmluvách', value: selectedSubmission.saveOnInsurance },
-                    { label: 'Zabezpečený príjem pri zdravotných problémoch', value: selectedSubmission.incomeSecurity },
-                    { label: 'Budúcnosť detí', value: selectedSubmission.kidsFuture },
-                    { label: 'Lepšie zhodnocovanie', value: selectedSubmission.betterReturns },
-                    { label: 'Kontrola existujúcich zmlúv', value: selectedSubmission.reviewExistingContracts },
-                  ];
-                  const selectedOnly = interestItems.filter(i => i.value);
-                  if (selectedOnly.length === 0) {
-                    return <p className="text-gray-500 italic">Žiadne vybrané záujmy</p>;
-                  }
-                  return (
-                    <div className="space-y-2">
-                      {selectedOnly.map((i, idx) => (
-                        <div key={idx} className="flex items-center space-x-2 bg-white p-3 rounded border-l-4 border-indigo-400">
-                          <span className="inline-flex items-center justify-center w-6 h-6 bg-indigo-100 text-indigo-800 rounded-full text-sm font-bold">{idx + 1}</span>
-                          <p className="text-gray-900 font-medium">{i.label}</p>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Summary removed as requested */}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 p-3 sm:p-6 border-t border-gray-200 bg-gray-50">
-              <button
-                onClick={closeModal}
-                className="w-full sm:w-auto px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition duration-200"
-              >
-                Zavrieť
-              </button>
-              <button
-                onClick={() => {
-                  const contactInfo = [
-                    selectedSubmission.phone && `Telefón: ${selectedSubmission.phone}`,
-                    selectedSubmission.email && `E-mail: ${selectedSubmission.email}`
-                  ].filter(Boolean).join('\n');
-                  
-                  navigator.clipboard.writeText(contactInfo);
-                  alert('Kontaktné údaje boli skopírované do schránky!');
-                }}
-                className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200"
-              >
-                Kopírovať kontakt
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Contact Submission Modal */}
-      {showContactModal && selectedContactSubmission && (
-        <div className="fixed inset-0 backdrop-blur-lg bg-black/20 flex items-center justify-center p-2 sm:p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex justify-between items-start p-3 sm:p-6 border-b border-gray-200">
-              <h3 className="text-lg sm:text-2xl font-bold text-gray-900 pr-4">
-                Kontaktný formulár - {selectedContactSubmission.name} {selectedContactSubmission.surname}
-              </h3>
-              <button
-                onClick={closeContactModal}
-                className="text-gray-400 hover:text-gray-600 text-2xl font-bold flex-shrink-0"
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
-              {/* Personal Information */}
-              <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
-                <h4 className="text-base sm:text-lg font-semibold text-blue-900 mb-3">👤 Osobné údaje</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Meno:</span>
-                    <p className="text-gray-900 font-medium">{selectedContactSubmission.name}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Priezvisko:</span>
-                    <p className="text-gray-900 font-medium">{selectedContactSubmission.surname}</p>
-                  </div>
-                  {selectedContactSubmission.phone && (
-                    <div>
-                      <span className="text-sm font-medium text-gray-600">Telefón:</span>
-                      <p className="text-gray-900 font-medium">📞 {selectedContactSubmission.phone}</p>
-                    </div>
-                  )}
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">E-mail:</span>
-                    <p className="text-gray-900 font-medium">📧 {selectedContactSubmission.email}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Dátum odoslania:</span>
-                    <p className="text-gray-900 font-medium">📅 {formatDate(selectedContactSubmission.createdAt)}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Message */}
-              {selectedContactSubmission.message && (
-                <div className="bg-green-50 rounded-lg p-4">
-                  <h4 className="text-lg font-semibold text-green-900 mb-3">💬 Správa</h4>
-                  <div className="bg-white p-3 rounded border-l-4 border-green-400">
-                    <p className="text-gray-900 font-medium whitespace-pre-wrap">{selectedContactSubmission.message}</p>
-                  </div>
-                </div>
-              )}
-
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 p-3 sm:p-6 border-t border-gray-200 bg-gray-50">
-              <button
-                onClick={closeContactModal}
-                className="w-full sm:w-auto px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition duration-200"
-              >
-                Zavrieť
-              </button>
-              <button
-                onClick={() => {
-                  const contactInfo = [
-                    `Meno: ${selectedContactSubmission.name} ${selectedContactSubmission.surname}`,
-                    selectedContactSubmission.phone && `Telefón: ${selectedContactSubmission.phone}`,
-                    `E-mail: ${selectedContactSubmission.email}`
-                  ].filter(Boolean).join('\n');
-                  
-                  navigator.clipboard.writeText(contactInfo);
-                  alert('Kontaktné údaje boli skopírované do schránky!');
-                }}
-                className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200"
-              >
-                Kopírovať kontakt
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        {tab === 'submissions' && <SubmissionsView submissions={submissions} loading={loading.submissions} />}
+        {tab === 'contact' && <ContactsView contacts={contacts} loading={loading.contacts} />}
+        {tab === 'blog' && <BlogManager posts={posts} loading={loading.posts} blobEnabled={blobEnabled} onChanged={loadPosts} />}
+      </main>
     </div>
   );
 }
