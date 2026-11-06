@@ -4,6 +4,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Fragment, useState, useEffect } from "react";
+import { SITE_LOGO_ALT, SITE_LOGO_INTRINSIC, SITE_LOGO_PATH } from "@/config/branding";
 import { navLinks } from "@/config/navigation";
 
 export default function Navbar() {
@@ -58,14 +59,19 @@ export default function Navbar() {
         <div className="w-full bg-transparent">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="relative flex items-center py-4 md:py-6 lg:py-4">
-              {/* Logo on the left */}
-              <Link href="/domov" className="flex-shrink-0 absolute left-8 mt-14">
+              {/* Logo on the left — keep compact (portrait asset scales by height) */}
+              <Link
+                href="/domov"
+                className="flex-shrink-0 absolute left-10 md:left-16 lg:left-[4.5rem] top-4"
+              >
+                {/* Sized by width: the global `img { height: auto }` rule overrides h-* utilities */}
                 <Image
-                  src="/Kópia súboru MK logo 2 biele.png"
-                  alt="Michal Kurka Logo"
-                  width={60}
-                  height={20}
-                  className="h-4 md:h-4 lg:h-6 w-auto"
+                  src={SITE_LOGO_PATH}
+                  alt={SITE_LOGO_ALT}
+                  width={SITE_LOGO_INTRINSIC.width}
+                  height={SITE_LOGO_INTRINSIC.height}
+                  sizes="112px"
+                  className="w-[4.375rem] md:w-[5rem] lg:w-[5.75rem]"
                   priority
                 />
               </Link>
@@ -224,15 +230,16 @@ export default function Navbar() {
 
     {/* Mobile Logo and Hamburger Button */}
     <div className="absolute top-0 left-0 right-0 z-50 md:hidden">
-      <div className="flex items-center justify-between px-4 py-4">
+      <div className="flex items-center justify-between pl-11 pr-4 py-4">
         {/* Logo on the left - only show on home page */}
-        <Link href="/domov" className="flex-shrink-0 -mt-2">
+        <Link href="/domov" className="flex-shrink-0 pt-1">
           <Image
-            src="/Kópia súboru MK logo 2 biele.png"
-            alt="Michal Kurka Logo"
-            width={55}
-            height={18}
-            className="h-4 w-auto"
+            src={SITE_LOGO_PATH}
+            alt={SITE_LOGO_ALT}
+            width={SITE_LOGO_INTRINSIC.width}
+            height={SITE_LOGO_INTRINSIC.height}
+            sizes="64px"
+            className="w-[3.75rem]"
             priority
           />
         </Link>

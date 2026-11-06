@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { SITE_LOGO_ALT, SITE_LOGO_INTRINSIC, SITE_LOGO_PATH } from '@/config/branding';
 import BlogManager from '@/components/admin/BlogManager';
 import { ContactsView, SubmissionsView, type ContactSubmission, type FormSubmission } from '@/components/admin/Submissions';
 import type { BlogPostSummary } from '@/lib/blogShared';
@@ -111,7 +112,15 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: (blobEnabled: boolean) => voi
 
       <div className="relative w-full max-w-md">
         <div className="mb-8 flex justify-center">
-          <Image src="/Kópia súboru MK logo 2 biele.png" alt="Michal Kurka" width={180} height={60} style={{ height: 72, width: 'auto' }} priority />
+          <Image
+            src={SITE_LOGO_PATH}
+            alt={SITE_LOGO_ALT}
+            width={SITE_LOGO_INTRINSIC.width}
+            height={SITE_LOGO_INTRINSIC.height}
+            sizes="60px"
+            className="w-[60px]"
+            priority
+          />
         </div>
         <form onSubmit={submit} className="rounded-3xl bg-white p-8 shadow-2xl sm:p-10">
           <h1 className="text-2xl font-bold text-[#202325]">Administrácia</h1>
@@ -276,7 +285,14 @@ function Dashboard({ blobEnabled, onLoggedOut }: { blobEnabled: boolean; onLogge
     <div className="min-h-screen bg-[#f5f7f8]">
       <header className="bg-[#202325]">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-          <Image src="/Kópia súboru MK logo 2 biele.png" alt="Michal Kurka" width={120} height={40} style={{ height: 40, width: 'auto' }} />
+          <Image
+            src={SITE_LOGO_PATH}
+            alt={SITE_LOGO_ALT}
+            width={SITE_LOGO_INTRINSIC.width}
+            height={SITE_LOGO_INTRINSIC.height}
+            sizes="40px"
+            className="w-10"
+          />
           <span className="hidden border-l border-white/15 pl-4 text-sm font-medium text-white/60 sm:inline">Administrácia</span>
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             <a href="/" target="_blank" rel="noopener noreferrer" className="rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white">
